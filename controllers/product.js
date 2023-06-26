@@ -1,4 +1,4 @@
-import { ProductModel } from '../models/Product.js'
+import { ProductModel } from '../models/product.js'
 import { CategoryModel } from '../models/category.js'
 import { UserModel } from '../models/user.js'
 
@@ -13,7 +13,7 @@ export const getProducts = async (req, res) => {
 export const getProductDetails = async (req, res) => {
   try {
     const product = await ProductModel.findOne({ _id: req.body._id })
-      .populate('sellBy', 'slug fullName displayName avatar')
+      .populate('listingBy', 'slug fullName displayName avatar')
       .populate('category')
       .populate('platform')
     res.status(200).send(product)
@@ -24,8 +24,8 @@ export const getProductDetails = async (req, res) => {
 export const getUserProducts = async (req, res) => {
   try {
     const user = await UserModel.findOne({ slug: req.body.slug })
-    const products = await ProductModel.find({ sellBy: user._id })
-      .populate('sellBy', 'slug fullName displayName avatar')
+    const products = await ProductModel.find({ listingBy: user._id })
+      .populate('listingBy', 'slug fullName displayName avatar')
       .populate('category')
       .populate('platform')
     if (user) {
@@ -46,21 +46,43 @@ export const createProduct = async (req, res) => {
     const subCategory = category.subCategory.find(
       (sub) => sub.title === body.gameTitle
     )
-    const product = ProductModel({
-      sellBy: body.userID,
-      title: body.title,
-      description: body.description,
-      category: category._id,
-      platform: subCategory.subCategoryName,
-      gameTitle: subCategory.title,
-      photos: body.url,
-      price: body.price,
-      visibility: body.visibility,
-      deliveryMethod: body.deliveryMethod,
-      deliveryIn: body.deliveryIn,
-    })
-    await product.save()
-    res.status(200).send(product)
+    if (body.deliveryMethod === 'Bot') {
+      const product = ProductModel({
+        listingBy: body.userID,
+        title: body.title,
+        description: body.description,
+        category: category._id,
+        platform: subCategory.subCategoryName,
+        gameTitle: subCategory.title,
+        photos: body.url,
+        price: body.price,
+        visibility: body.visibility,
+        deliveryMethod: body.deliveryMethod,
+        deliveryIn: body.deliveryIn,
+        item: body.item,
+        isAvailable: true,
+      })
+      console.log('here')
+      await product.save()
+      res.status(200).send('Product created successfully')
+    } else {
+      const product = ProductModel({
+        listingBy: body.userID,
+        title: body.title,
+        description: body.description,
+        category: category._id,
+        platform: subCategory.subCategoryName,
+        gameTitle: subCategory.title,
+        photos: body.url,
+        price: body.price,
+        visibility: body.visibility,
+        deliveryMethod: body.deliveryMethod,
+        deliveryIn: body.deliveryIn,
+        isAvailable: true,
+      })
+      await product.save()
+      res.status(200).send('Product created successfully')
+    }
   } catch (err) {
     res.status(500).send({ error: err.message })
   }

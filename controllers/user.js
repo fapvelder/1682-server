@@ -43,6 +43,8 @@ export const getUserById = async (req, res) => {
         profile: user.profile,
         displayName: user.displayName,
         wallet: user.wallet,
+        transactions: user.transactions,
+        itemHeld: user.itemHeld,
       })
     } else {
       res.status(404).json({ error: 'User not found' })
@@ -507,6 +509,7 @@ export const sendSecret = async (req, res) => {
         console.log('Email sent: ' + info.response)
       }
     })
+    res.status(200).send('Successfully')
   } catch (err) {
     res.status(500).send({ message: err.message })
   }

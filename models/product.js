@@ -14,7 +14,8 @@ const discountSchema = mongoose.Schema({
 })
 const productSchema = new mongoose.Schema(
   {
-    sellBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    listingBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    // purchaseBy: { type: Schema.Types.ObjectId, ref: 'User', required: false },
     title: { type: String, required: true },
     description: { type: mongoose.Schema.Types.Mixed, required: true },
     category: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
@@ -22,10 +23,8 @@ const productSchema = new mongoose.Schema(
       type: String,
     },
     platform: { type: Schema.Types.ObjectId, ref: 'Platform', required: true },
-    // regionRestriction: { type: String, required: true },
-    // currency: { type: String, required: true },
+
     price: { type: Number, required: true },
-    // expiration: { type: String, required: true },
     visibility: { type: String, required: true },
     photos: { type: [String], required: true },
     // discount: [discountSchema],
@@ -34,12 +33,13 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    deliveryIn: { type: String, required: false },
+    deliveryIn: { type: String, required: true },
+    item: { type: mongoose.Schema.Types.Mixed, required: false },
     digitalCode: { type: String, required: false },
-    status: { type: String, required: true, default: 'On Sale' },
     productFeedback: [
       { type: mongoose.Schema.Types.ObjectId, ref: 'Feedback' },
     ],
+    isAvailable: { type: Boolean, required: true },
   },
   { timestamps: true }
 )
