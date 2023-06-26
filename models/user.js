@@ -18,6 +18,21 @@ const communicationSchema = new mongoose.Schema({
     required: true,
   },
 })
+const transactionSchema = new mongoose.Schema(
+  {
+    paymentMethod: { type: String, required: true },
+    status: { type: String, required: true },
+    amount: { type: String, required: true },
+    VNPayID: { type: String, required: false },
+    VNPayDate: { type: String, required: false },
+    date: { type: String, required: true },
+  },
+  { timeStamps: true }
+)
+const itemSchema = new mongoose.Schema({
+  itemData: mongoose.Schema.Types.Mixed,
+})
+
 const userSchema = new mongoose.Schema(
   {
     email: {
@@ -54,6 +69,9 @@ const userSchema = new mongoose.Schema(
     secretToken: {
       type: String,
     },
+    pendingOffer: { type: [String] },
+    itemHeld: { type: [mongoose.Schema.Types.Mixed] },
+    transactions: [transactionSchema],
     role: { type: Schema.Types.ObjectId, ref: 'Role' },
     resetPasswordToken: { type: String, required: false },
     resetPasswordExpires: { type: Date, required: false },

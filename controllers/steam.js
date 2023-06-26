@@ -13,20 +13,90 @@ import { generateSteamToken } from '../utils.js'
 import jwt from 'jsonwebtoken'
 import { UserModel } from '../models/user.js'
 import convertor from 'steam-id-convertor'
-import market from 'steam-market-pricing'
-import SteamTradeOffers from 'steam-tradeoffers'
+import SteamUser from 'steam-user'
+import SteamTotp from 'steam-totp'
+import TradeOfferSteam from 'steam-tradeoffer-manager'
+import SteamCommunity from 'steamcommunity'
+import axios from 'axios'
+import { v4 as uuidv4 } from 'uuid'
+import { io } from '../index.js'
 
 const app = express()
 app.use(passport.initialize())
 app.use(passport.session())
-const offers = new SteamTradeOffers()
 
+const client = new SteamUser()
+const community = new SteamCommunity()
+const manager = new TradeOfferSteam({
+  steam: client,
+  community: community,
+  language: 'en',
+})
+const logInOptions = {
+  accountName: process.env.ACCOUNT_NAME,
+  password: process.env.PASSWORD,
+  twoFactorCode: SteamTotp.generateAuthCode(process.env.SHARED_SECRET),
+}
+export const loginSteam = () => {
+  client.logOn(logInOptions)
+  client.on('loggedOn', () => {
+    console.log('logged on')
+    client.setPersona(SteamUser.EPersonaState.Online)
+  })
+  setTimeout(() => {
+    community.login(
+      {
+        accountName: process.env.ACCOUNT_NAME,
+        password: process.env.PASSWORD,
+        twoFactorCode: SteamTotp.getAuthCode(process.env.SHARED_SECRET),
+        // disableMobile: false,
+      },
+      (err, sessionID, cookies, steamguard) => {
+        if (err) {
+          console.error('Login error:', err)
+          return
+        } else {
+          console.log('community logged in')
+        }
+      }
+    )
+  }, 35000)
+
+  client.on('webSession', (sessionID, cookies) => {
+    manager.setCookies(cookies)
+    community.setCookies(cookies)
+  })
+  community.on('debug', console.log)
+
+  manager.on('newOffer', (offer) => {
+    console.log('offer deteced')
+    if (offer.partner.getSteamID64 === '76561198255066121') {
+      // id của người gửi, nếu đúng sẽ accept
+      offer.accept((err, status) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(status)
+        }
+      })
+    } else {
+      console.log('unknown sender')
+      offer.decline((err) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log('trade from stranger decline')
+        }
+      })
+    }
+  })
+}
 passport.use(
   new SteamStrategy(
     {
-      returnURL: 'http://localhost:5000/steam/auth/steam/return',
-      realm: 'http://localhost:5000/',
-      apiKey: 'A2491051D5688C195EFF726164CB0E06',
+      returnURL: process.env.STEAM_RETURN_URL,
+      realm: process.env.STEAM_REALM,
+      apiKey: process.env.STEAM_API,
       passReqToCallback: true,
     },
     (req, identifier, profile, done) => {
@@ -47,7 +117,6 @@ passport.use(
                   user.profile.steam.steamURL = profile._json.profileurl
                   user.profile.steam.partnerID = id
                   await user.save()
-
                   // Handle additional operations or responses here
                   return done(null, profile) // Pass the user profile to done function
                 } catch (err) {
@@ -122,22 +191,79 @@ export const getItem = async (req, res) => {
       return res.status(404).json({ message: 'User not found' })
     }
 
-    const lastItemRetrieval = user.profile.steam.lastItemRetrieval
-    if (lastItemRetrieval && currentTime - lastItemRetrieval < cooldownPeriod) {
-      return res
-        .status(403)
-        .json({ message: 'You can only refresh inventory every 3 hours' })
+    // const lastItemRetrieval = user.profile.steam.lastItemRetrieval
+    // if (lastItemRetrieval && currentTime - lastItemRetrieval < cooldownPeriod) {
+    //   return res
+    //     .status(403)
+    //     .json({ message: 'You can only refresh inventory every 3 hours' })
+    // }
+    let item
+
+    function getUserInventory() {
+      return new Promise((resolve, reject) => {
+        const inventoryPromises = []
+
+        inventoryPromises.push(
+          new Promise((resolve, reject) => {
+            manager.getUserInventoryContents(
+              user.profile.steam.steamID,
+              753,
+              6,
+              true,
+              (err, inventory) => {
+                if (err) {
+                  console.log('err', err)
+                  reject(err)
+                } else {
+                  resolve(inventory)
+                }
+              }
+            )
+          })
+        )
+        inventoryPromises.push(
+          new Promise((resolve, reject) => {
+            manager.getUserInventoryContents(
+              user.profile.steam.steamID,
+              730,
+              2,
+              true,
+              (err, inventory) => {
+                if (err) {
+                  console.log('err', err)
+                  reject(err)
+                } else {
+                  resolve(inventory)
+                }
+              }
+            )
+          })
+        )
+
+        Promise.all(inventoryPromises)
+          .then((inventories) => {
+            resolve(inventories)
+          })
+          .catch((err) => {
+            reject(err)
+          })
+      })
     }
 
-    const items = await getInventory(steamID, 730, 2)
-    if (items) {
-      user.profile.steam.steamInventory = items
-      user.profile.steam.lastItemRetrieval = currentTime
-      await user.save()
-      res.status(200).send('Refreshed inventory successfully')
-    } else {
-      res.status(404).json({ message: 'Failed to retrieve items' })
-    }
+    getUserInventory()
+      .then(async (inventories) => {
+        if (inventories) {
+          user.profile.steam.steamInventory = inventories
+          // user.profile.steam.lastItemRetrieval = currentTime
+          await user.save()
+          res.status(200).send('Refreshed inventory successfully')
+        } else {
+          res.status(404).json({ message: 'Failed to retrieve items' })
+        }
+      })
+      .catch((err) => {
+        console.log('Error retrieving inventories:', err)
+      })
   } catch (err) {
     console.log(err)
     res.status(500).json({ message: 'Internal server error' })
@@ -194,4 +320,264 @@ export const updateSteamURL = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message })
   }
+}
+
+export async function sendSteamItem(req, res) {
+  const user = await UserModel.findOne({ _id: req.body.userID })
+  const appID = req.body.appID
+  const version = req.body.version
+  const itemID = req.body.classID
+  if (user) {
+    const item = user.itemHeld.find((item) => item.classid === itemID)
+    if (item) {
+      console.log('find item')
+      manager.loadInventory(appID, version, true, (err, inventory) => {
+        if (err) {
+          console.log(err)
+        } else {
+          let itemFound = false
+          const offer = manager.createOffer(user.profile.steam.steamTradeURL)
+          // Gửi đến id người nhận
+          inventory.forEach(function (item) {
+            if (item.classid === itemID) {
+              itemFound = true
+              offer.addMyItem(item)
+              console.log('add item')
+              offer.setMessage('We send you item')
+              offer.send((err, status) => {
+                if (err) {
+                  console.log(err)
+                } else {
+                  console.log('status', status)
+                  if (status === 'pending') {
+                    community.acceptConfirmationForObject(
+                      process.env.IDENTITY_SECRET,
+                      offer.id,
+                      async function (err) {
+                        if (err) {
+                          console.log('err', err)
+                        } else {
+                          res.status(200).send({
+                            tradeOfferURL: `https://steamcommunity.com/tradeoffer/${offer.id}/`,
+                          })
+                          const { status } = await pollItemStatus(offer.id)
+                          if (status === 'ACCEPTED') {
+                            user.itemHeld = user.itemHeld.filter(
+                              (item) => item.classid !== itemID
+                            )
+                            await user.save()
+                            io.emit('tradeOfferStatus', {
+                              messageSuccess: 'Trade offer has been accepted',
+                            })
+                          } else {
+                            io.emit('tradeOfferStatus', {
+                              messageFailure: 'Trade offer has been declined',
+                            })
+                          }
+                        }
+                      }
+                    )
+                  } else {
+                    console.log(`Offer #${offer.id} sent successfully`)
+                  }
+                }
+              })
+            }
+          })
+          if (!itemFound) {
+            res.status(404).send({ message: 'Item not found' })
+          }
+        }
+      })
+    } else {
+      res.status(404).send({ message: "Item not found in user's inventory" })
+    }
+  } else {
+    res.status(404).send({ message: 'User not found' })
+  }
+}
+export async function getSteamItem(req, res) {
+  const user = await UserModel.findOne({ _id: req.body.userID })
+
+  const appID = req.body.appID
+  const version = req.body.version
+  const itemID = req.body.classID
+
+  if (user) {
+    const offer = manager.createOffer(user.profile.steam.steamTradeURL)
+    // Load recipient's inventory
+    manager.getUserInventoryContents(
+      user.profile.steam.steamID,
+      appID,
+      version,
+      true,
+      (err, inventory) => {
+        if (err) {
+          console.log('err', err)
+        } else {
+          console.log('sending')
+          let itemFound = false
+          // Add recipient's items to the offer
+          inventory.forEach(function (item) {
+            if (item.classid === itemID) {
+              itemFound = true
+              const uuid = uuidv4()
+              offer.addTheirItem(item)
+              offer.setMessage(`You traded an item ${uuid}`)
+              offer.send(async (err, status) => {
+                if (err) {
+                  console.log('err', err)
+                } else {
+                  console.log('status', status)
+                  if (status === 'pending') {
+                    console.log('pending')
+                  } else {
+                    const response = {
+                      id: uuid,
+                      tradeOfferUrl: `https://steamcommunity.com/tradeoffer/${offer.id}/`,
+                    }
+                    user.pendingOffer = [...user.pendingOffer, offer.id]
+                    await user.save()
+                    res.status(200).send(response)
+
+                    // const status = await pollItemStatus(offer.id)
+                    // if (status === 'ACCEPTED') {
+                    //   console.log(status)
+                    // } else {
+                    //   console.log(status)
+                    // }
+                  }
+                }
+              })
+            }
+          })
+          if (!itemFound) {
+            res.status(404).send({ message: 'Item not found' })
+          }
+        }
+      }
+    )
+  } else {
+    res.status(404).send({ message: 'User not found' })
+  }
+}
+export const checkStatus = async (req, res) => {
+  // console.log(req.body.offerID)
+  const user = await UserModel.findOne({ pendingOffer: req.body.offerID })
+  if (user) {
+    const { status, item } = await pollItemStatus(req.body.offerID, 12)
+    if (status === 'ACCEPTED') {
+      user.pendingOffer = user.pendingOffer.filter(
+        (id) => id !== req.body.offerID
+      )
+      const itemObject = JSON.parse(JSON.stringify(...item))
+      user.itemHeld.push(itemObject)
+      await user.save()
+      res.status(200).send({ message: 'ACCEPTED' })
+    } else {
+      res.status(400).send({ message: 'Denied or Pending trade offer' })
+    }
+  } else {
+    res.status(404).send({ message: 'User not found' })
+  }
+}
+export const pollItemStatus = async (offerID, maxPollAttempts) => {
+  let status = ''
+  let item = ''
+  const state = TradeOfferSteam.ETradeOfferState
+  const deniedState = [
+    state.Countered,
+    state.Expired,
+    state.Invalid,
+    state.Canceled,
+    state.Declined,
+  ]
+  const checkOfferStatus = () => {
+    manager.getOffer(offerID, (err, offer) => {
+      if (err) {
+        console.error('Error retrieving trade offer:', err)
+        return
+      }
+      item = offer.itemsToReceive
+
+      if (offer.state === 3) {
+        status = 'ACCEPTED'
+      } else if (deniedState.includes(offer.state)) {
+        status = 'DENIED'
+      } else {
+        console.log('PENDING')
+      }
+    })
+  }
+
+  const pollInterval = 5000 // Interval in milliseconds
+  const shouldContinuePolling = () =>
+    (typeof maxPollAttempts !== 'number' || pollCount < maxPollAttempts) &&
+    status !== 'ACCEPTED' &&
+    status !== 'DENIED'
+
+  let pollCount = 0
+  while (shouldContinuePolling()) {
+    await new Promise((resolve) => setTimeout(resolve, pollInterval))
+    checkOfferStatus()
+    pollCount++
+  }
+  return { status, item }
+}
+
+// export const pollItemStatus = async (offerID) => {
+//   let status = ''
+//   let item = ''
+//   const state = TradeOfferSteam.ETradeOfferState
+//   const deniedState = [
+//     state.Countered,
+//     state.Expired,
+//     state.Invalid,
+//     state.Canceled,
+//     state.Declined,
+//   ]
+//   const checkOfferStatus = () => {
+//     manager.getOffer(offerID, (err, offer) => {
+//       if (err) {
+//         console.error('Error retrieving trade offer:', err)
+//         return
+//       }
+//       item = offer.itemsToReceive
+
+//       if (offer.state === 3) {
+//         status = 'ACCEPTED'
+//       } else if (deniedState.includes(offer.state)) {
+//         status = 'DENIED'
+//       }
+//     })
+//   }
+
+//   const pollInterval = 5000 // Interval in milliseconds
+//   const maxPollAttempts =  12 // Maximum number of polling attempts
+
+//   let pollCount = 0
+//   while (
+//     pollCount < maxPollAttempts &&
+//     status !== 'ACCEPTED' &&
+//     status !== 'DENIED'
+//   ) {
+//     await new Promise((resolve) => setTimeout(resolve, pollInterval))
+//     checkOfferStatus()
+//     pollCount++
+//   }
+//   return { status, item }
+// }
+
+function confirmTradeOffer(offerId) {
+  community.acceptConfirmationForObject(
+    process.env.IDENTITY_SECRET,
+    offerId,
+    (err) => {
+      if (err) {
+        console.error('Error confirming trade offer:', err)
+        return
+      }
+      console.log(`Trade offer #${offerId} confirmed successfully`)
+    }
+  )
 }

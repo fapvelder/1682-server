@@ -1,5 +1,8 @@
 import axios from 'axios'
 import { UserModel } from '../models/user.js'
+import moment from 'moment'
+import querystring from 'qs'
+import crypto from 'crypto'
 const { CLIENT_ID, APP_SECRET } = process.env
 const baseURL = {
   sandbox: 'https://api-m.sandbox.paypal.com',
@@ -44,7 +47,35 @@ export async function capturePayment(req, res) {
       Authorization: `Bearer ${accessToken}`,
     },
   })
+
   const data = await response.json()
+  const amount = data.purchase_units[0].payments.captures[0].amount.value
+  if (data.status === 'COMPLETED') {
+    const newTransaction = {
+      paymentMethod: 'Paypal',
+      status: 'Success',
+      amount: amount,
+      date: new Date(),
+    }
+    await UserModel.findOneAndUpdate(
+      { _id: req.body.userID },
+      { $push: { transactions: newTransaction } },
+      { new: true }
+    )
+    console.log('successfully')
+  } else {
+    const newTransaction = {
+      paymentMethod: 'Paypal',
+      status: 'Denied',
+      amount: amount,
+      date: new Date(),
+    }
+    await UserModel.findOneAndUpdate(
+      { _id: req.body.userID },
+      { $push: { transactions: newTransaction } },
+      { new: true }
+    )
+  }
   res.send(data)
 }
 export async function payout(req, res) {
@@ -56,7 +87,6 @@ export async function payout(req, res) {
     if (user.secretToken === req.body.secretToken) {
       user.secretToken = undefined
       await user.save()
-      console.log(user.secretToken)
       if (user && user.wallet > req.body.amount) {
         const response = await axios.post(
           `${baseURL.sandbox}/v1/payments/payouts`,
@@ -89,24 +119,17 @@ export async function payout(req, res) {
           }
         )
         const payoutID = response.data.batch_header.payout_batch_id
-        setTimeout(async () => {
-          const payoutStatus = await axios.get(
-            `${baseURL.sandbox}/v1/payments/payouts/${payoutID}`,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
-          )
-          if (payoutStatus.data.batch_header.batch_status === 'SUCCESS') {
-            user.wallet = Number(user.wallet) - Number(req.body.amount)
-            await user.save()
-            res.status(200).send('Successfully')
-          } else {
-            res.status(403).send({ message: 'Failed due to Denied by Paypal' })
-          }
-        }, 5000)
+        const status = await pollTransactionStatus(payoutID)
+        if (status === 'SUCCESS') {
+          user.wallet =
+            Number(user.wallet) -
+            Number(req.body.amount) -
+            Number(req.body.withdrawalFee)
+          await user.save()
+          res.status(200).send('Successfully')
+        } else {
+          res.status(403).send({ message: 'Failed due to Denied by Paypal' })
+        }
       } else {
         res.status(403).send({ message: 'Do not have sufficient funds.' })
       }
@@ -117,45 +140,38 @@ export async function payout(req, res) {
     // Handle errors here
     console.error(error)
   }
-
-  //   try {
-  //     const result = await fetch(
-  //       'https://api-m.sandbox.paypal.com/v1/payments/payouts',
-  //       {
-  //         method: 'POST',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //           Authorization: `Bearer ${accessToken}`,
-  //         },
-  //         body: JSON.stringify({
-  //           sender_batch_header: {
-  //             sender_batch_id: Math.random(),
-  //             email_subject: 'You have a payout!',
-  //             email_message:
-  //               'You have received a payout! Thanks for using our service!',
-  //           },
-  //           items: [
-  //             {
-  //               recipient_type: 'EMAIL',
-  //               amount: {
-  //                 value: '5.00',
-  //                 currency: 'USD',
-  //               },
-  //               note: 'Thanks for your patronage!',
-  //               sender_item_id: '201403140001',
-  //               receiver: 'sb-xn47c426267002@personal.example.com',
-  //               notification_language: 'en-US',
-  //             },
-  //           ],
-  //         }),
-  //       }
-  //     )
-  //     res.status(result.status).send('Successfully')
-  //   } catch (error) {
-  //     // Handle errors here
-  //     console.error(error)
-  //   }
 }
+export const checkPaypalTransaction = async (payoutID) => {
+  try {
+    const accessToken = await generatePaypalAccessToken()
+    const payoutStatus = await axios.get(
+      `${baseURL.sandbox}/v1/payments/payouts/${payoutID}`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    )
+    return payoutStatus.data.batch_header.batch_status
+  } catch (err) {
+    console.error(err)
+  }
+}
+export async function pollTransactionStatus(payoutID) {
+  let status = ''
+  while (status !== 'SUCCESS') {
+    status = await checkPaypalTransaction(payoutID)
+    if (status === 'SUCCESS') {
+      return status
+    } else if (status === 'PROCESSING') {
+      await new Promise((resolve) => setTimeout(resolve, 3000))
+    } else {
+      return status
+    }
+  }
+}
+
 // generate an access token using client id and app secret
 export async function generatePaypalAccessToken() {
   const auth = Buffer.from(CLIENT_ID + ':' + APP_SECRET).toString('base64')
