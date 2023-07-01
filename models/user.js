@@ -35,6 +35,7 @@ const itemSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema(
   {
+    socketID: { type: String },
     email: {
       type: String,
       required: true,
