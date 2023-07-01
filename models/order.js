@@ -4,6 +4,29 @@ const discountSchema = mongoose.Schema({
   code: { type: String, required: true },
   amount: { type: Number, required: true },
 })
+const feedbackSchema = new mongoose.Schema({
+  order: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    required: true,
+  },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  feedbackOn: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  rating: { type: String, required: true },
+  comment: {
+    type: String,
+    required: true,
+  },
+})
+
 const orderSchema = new mongoose.Schema(
   {
     product: {
@@ -26,8 +49,11 @@ const orderSchema = new mongoose.Schema(
     // regionRestriction: { type: String, required: true },
     // currency: { type: String, required: true },
     status: { type: String, required: true },
+    isBotSent: { type: Boolean },
+    isFeedback: { type: Boolean },
   },
   { timestamps: true }
 )
 
 export const OrderModel = mongoose.model('Order', orderSchema)
+export const FeedbackModel = mongoose.model('Feedback', feedbackSchema)

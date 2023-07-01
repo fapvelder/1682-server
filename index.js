@@ -19,9 +19,15 @@ import steam from './routers/steam.js'
 import paypal from './routers/paypal.js'
 import vnpay from './routers/vnpay.js'
 import products from './routers/product.js'
+import comments from './routers/comment.js'
+import feedbacks from './routers/feedback.js'
+import notifications from './routers/notifications.js'
 import orders from './routers/order.js'
 import session from 'express-session'
 import { loginSteam } from './controllers/steam.js'
+import { UserModel } from './models/user.js'
+import { NotificationModel } from './models/notification.js'
+import { sendNotification } from './controllers/notification.js'
 
 dotenv.config()
 const __filename = fileURLToPath(import.meta.url)
@@ -89,7 +95,7 @@ const server = app.listen(5000, () => {
   console.log('server is listening on port 5000')
 })
 //steam config
-loginSteam()
+// loginSteam()
 //
 const io = new Server(server, {
   cors: {
@@ -109,15 +115,37 @@ app.use('/steam', steam)
 app.use('/paypal', paypal)
 app.use('/vnpay', vnpay)
 app.use('/orders', orders)
+app.use('/comments', comments)
+app.use('/feedbacks', feedbacks)
+app.use('/notifications', notifications)
 global.onlineUsers = new Map()
 io.on('connection', (socket) => {
+  let authenticatedUsers = new Set()
   global.chatsocket = socket
 
   socket.on('addUser', (id) => {
     onlineUsers.set(id, socket.id)
   })
+
   socket.on('updateUserDetails', () => {
     io.emit('userDetailsUpdated')
+  })
+
+  socket.on('send-notify', async (data) => {
+    try {
+      const { userID, message } = data
+      const user = await UserModel.findOne({ _id: userID }).exec()
+      if (user) {
+        const newNotification = new NotificationModel({
+          userID: user._id,
+          message: message,
+        })
+        const notification = await newNotification.save()
+        io.emit('receive-notify', notification)
+      }
+    } catch (err) {
+      console.error('Error saving notification:', err)
+    }
   })
 
   socket.on('send-msg', (data) => {
@@ -125,6 +153,16 @@ io.on('connection', (socket) => {
     if (sendUserSocket) {
       socket.to(sendUserSocket).emit('msg-receive', data.message)
     }
+    io.emit('msg-count', data)
+  })
+  socket.on('disconnect', () => {
+    // Remove user from authenticated users set when they disconnect
+    authenticatedUsers.forEach((userID) => {
+      if (onlineUsers.get(userID) === socket.id) {
+        authenticatedUsers.delete(userID)
+        console.log(`User with ID ${userID} disconnected`)
+      }
+    })
   })
 })
 export { io }
