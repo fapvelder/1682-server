@@ -23,7 +23,7 @@ const feedbackSchema = new mongoose.Schema({
   rating: { type: String, required: true },
   comment: {
     type: String,
-    required: true,
+    required: false,
   },
 })
 
@@ -50,6 +50,7 @@ const orderSchema = new mongoose.Schema(
     // currency: { type: String, required: true },
     status: { type: String, required: true },
     isBotSent: { type: Boolean },
+    isTransfer: { type: Boolean },
     isFeedback: { type: Boolean },
   },
   { timestamps: true }

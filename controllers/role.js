@@ -8,7 +8,7 @@ export const getRole = async (req, res) => {
     const role = await RoleModel.find({})
     res.send(role)
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const createRole = async (req, res, next) => {
@@ -31,7 +31,7 @@ export const deleteRole = async (req, res) => {
     const role = await RoleModel.findByIdAndDelete(deleteRole, { new: true })
     res.status(200).json(role)
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
 export const updateRole = async (req, res, next) => {

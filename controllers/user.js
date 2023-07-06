@@ -26,7 +26,7 @@ export const getUsers = async (req, res) => {
     const users = await UserModel.find({}).populate('role')
     res.send(users)
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
 export const getUserById = async (req, res) => {
@@ -47,10 +47,10 @@ export const getUserById = async (req, res) => {
         itemHeld: user.itemHeld,
       })
     } else {
-      res.status(404).json({ error: 'User not found' })
+      res.status(404).json({ message: 'User not found' })
     }
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
 
@@ -72,10 +72,10 @@ export const getUserBySlug = async (req, res) => {
         since: user.createdAt,
       })
     } else {
-      res.status(404).json({ error: 'User not found' })
+      res.status(404).json({ message: 'User not found' })
     }
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
 export const refresh = async (req, res) => {
