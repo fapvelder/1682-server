@@ -333,7 +333,7 @@ export const getItemOrder = async (req, res) => {
     console.log('status Order', orderStatus)
     res.status(200).send({ orderStatus })
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 

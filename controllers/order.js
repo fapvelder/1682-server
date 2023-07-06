@@ -14,11 +14,12 @@ export const getOrders = async (req, res) => {
           { path: 'platform', model: 'Platform' },
         ],
       })
-      .populate('buyer', 'fullName displayName slug avatar')
-      .populate('seller', 'fullName displayName slug avatar')
+      .populate('buyer', 'fullName displayName slug avatar profile')
+      .populate('seller', 'fullName displayName slug avatar profile')
+      .sort({ createdAt: -1 })
     res.status(200).send(orders)
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const getOrderDetails = async (req, res) => {
@@ -32,11 +33,11 @@ export const getOrderDetails = async (req, res) => {
           { path: 'platform', model: 'Platform' },
         ],
       })
-      .populate('buyer', 'fullName displayName slug avatar')
-      .populate('seller', 'fullName displayName slug avatar')
+      .populate('buyer', 'fullName displayName slug avatar profile')
+      .populate('seller', 'fullName displayName slug avatar profile')
     res.status(200).send(order)
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 
@@ -44,6 +45,11 @@ export const buyProduct = async (req, res) => {
   try {
     const product = await ProductModel.findOne({ _id: req.body.productID })
     const user = await UserModel.findOne({ _id: req.body.userID })
+    if (!user.profile.steam.steamTradeURL) {
+      return res
+        .status(403)
+        .send({ message: 'You must login via Steam first.' })
+    }
     if (!product) {
       return res.status(404).send({ message: 'Product not found' })
     }
@@ -52,17 +58,18 @@ export const buyProduct = async (req, res) => {
         .status(403)
         .send({ message: 'Product cannot be purchased by the owner' })
     }
-    // if (!product.isAvailable) {
-    //   return res
-    //     .status(403)
-    //     .send({ message: 'Product has already been purchased' })
-    // }
+    if (!product.isAvailable) {
+      return res
+        .status(403)
+        .send({ message: 'Product has already been purchased' })
+    }
     if (Number(user.wallet) < Number(product.price)) {
       return res.status(403).send({ message: 'User funds are insufficient' })
     }
 
     // Update product and user data
     product.isAvailable = false
+    product.status = 'Sold'
     user.wallet -= product.price
 
     // Create the order
@@ -73,29 +80,17 @@ export const buyProduct = async (req, res) => {
       status: 'Pending',
       isBotSent: false,
       isFeedback: false,
+      isTransfer: false,
     })
 
-    // await Promise.all([product.save(), user.save(), order.save()])
+    await Promise.all([product.save(), user.save(), order.save()])
 
-    res.status(200).send('Product purchased successfully')
+    res.status(200).send(order)
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
-// export const completeProduct = async (req, res) => {
-//   try {
-//     const product = await ProductModel.findOne({ _id: req.body.productID })
-//     if (product.purchaseBy === req.body.userID) {
-//       product.status = 'Completed'
-//       await product.save()
-//       res.status(200).send({ message: 'Thanks for your purchase' })
-//     } else {
-//       res.status(403).send({ message: 'You are not purchaser of this product' })
-//     }
-//   } catch (err) {
-//     res.status(500).send({ error: err.message })
-//   }
-// }
+
 export const getItemOrder = async (req, res) => {
   try {
     const order = await OrderModel.findOne({ _id: req.body.orderID })
@@ -126,25 +121,38 @@ export const getItemOrder = async (req, res) => {
       res.status(403).send({ message: 'Trade offer has been denied' })
     }
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const completeOrder = async (req, res) => {
   try {
-    const order = await OrderModel.findOne({ _id: req.body.orderID })
+    const order = await OrderModel.findOne({ _id: req.body.orderID }).populate(
+      'product'
+    )
     if (!order) {
       return res.status(404).send({ message: 'Order not found' })
+    }
+    if (order.status === 'Completed' || order.status === 'Cancelled') {
+      return res
+        .status(403)
+        .send({ message: 'Order has been completed or cancelled' })
     }
     if (order.buyer._id.toString() !== req.body.userID) {
       return res
         .status(403)
         .send({ message: 'You do not have permission to do this' })
     }
+    const product = await ProductModel.findOne({ _id: order.product._id })
+    const user = await UserModel.findOne({ _id: order.seller._id })
     order.status = 'Completed'
+    product.status = 'Completed'
+    user.wallet += Number(order.product.price * 0.9)
     await order.save()
+    await product.save()
+    await user.save()
     res.status(200).send('Order is completed')
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const feedbackOrder = async (req, res) => {
@@ -165,6 +173,75 @@ export const feedbackOrder = async (req, res) => {
     await feedback.save()
     res.status(200).send({ message: 'Feedback has been saved' })
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
+  }
+}
+export const transferItem = async (req, res) => {
+  try {
+    const order = await OrderModel.findOne({ _id: req.body.orderID }).populate({
+      path: 'product',
+      populate: [
+        { path: 'category', model: 'Category' },
+        { path: 'platform', model: 'Platform' },
+      ],
+    })
+    if (!order) {
+      return res.status(404).send({ message: 'Order not found' })
+    }
+    if (order.seller._id.toString() !== req.body.userID) {
+      return res
+        .status(403)
+        .send({ message: 'You do not have permission to do this' })
+    }
+    console.log(req.body)
+    if (order.product.category.name !== 'Game Items') {
+      if (req.body.code === '') {
+        return res
+          .status(403)
+          .send({ message: 'You did not provide digital or key code' })
+      }
+      const product = await ProductModel.findOne({ _id: order.product._id })
+      product.digitalCode = req.body.code
+      await product.save()
+    }
+    order.isTransfer = true
+    await order.save()
+    res.status(200).send({ message: 'Item has been transferred successfully' })
+  } catch (err) {
+    res.status(500).send({ message: err.message })
+  }
+}
+export const cancelOrder = async (req, res) => {
+  try {
+    const order = await OrderModel.findOne({ _id: req.body.orderID }).populate(
+      'product'
+    )
+    console.log(order)
+
+    if (order.status === 'Completed' || order.status === 'Cancelled') {
+      return res
+        .status(403)
+        .send({ message: 'Order has been completed or cancelled' })
+    }
+    if (order.buyer._id.toString() !== req.body.userID) {
+      return res
+        .status(403)
+        .send({ message: 'You do not have permission to do this' })
+    }
+    if (!order) {
+      return res.status(404).send({ message: 'Order not found' })
+    }
+    const product = await ProductModel.findOne({ _id: order.product._id })
+    const user = await UserModel.findOne({ _id: order.buyer._id })
+    product.isAvailable = true
+    product.status = 'On Sale'
+    user.wallet += Number(order.product.price)
+    order.status = 'Cancelled'
+    await user.save()
+    await order.save()
+    await product.save()
+    res.send({ message: 'Order has been cancelled' })
+  } catch (err) {
+    res.status(500).send({ message: err.message })
   }
 }

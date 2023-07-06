@@ -133,12 +133,22 @@ io.on('connection', (socket) => {
 
   socket.on('send-notify', async (data) => {
     try {
-      const { userID, message } = data
+      const { userID, type, url } = data
+      let typeMessages = {
+        Purchase: 'Someone has purchased your product',
+        Comment: 'Someone has commented on your product',
+        Complete: 'Your product has been completed by the seller',
+        Cancel: 'Your product has been cancelled by the buyer',
+        Feedback: 'You have a feedback from the seller',
+      }
+      const message = typeMessages[type]
+
       const user = await UserModel.findOne({ _id: userID }).exec()
       if (user) {
         const newNotification = new NotificationModel({
           userID: user._id,
           message: message,
+          url: url,
         })
         const notification = await newNotification.save()
         io.emit('receive-notify', notification)

@@ -9,7 +9,7 @@ export const getCategory = async (req, res) => {
       .lean()
     res.send(category)
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const createCategory = async (req, res, next) => {
@@ -44,7 +44,7 @@ export const deleteCategory = async (req, res) => {
     })
     res.status(200).json(category)
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
 export const updateCategory = async (req, res, next) => {

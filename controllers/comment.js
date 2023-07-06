@@ -17,7 +17,9 @@ export const getCommentByProductID = async (req, res) => {
   try {
     const comments = await CommentModel.find({
       product: req.body.productID,
-    }).populate('commenter', 'slug fullName displayName avatar')
+    })
+      .populate('commenter', 'slug fullName displayName avatar')
+      .sort({ createdAt: -1 })
     res.status(200).send(comments)
   } catch (err) {
     res.status(500).send({ message: err.message })

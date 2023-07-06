@@ -5,7 +5,7 @@ export const getPlatform = async (req, res) => {
     const platform = await PlatformModel.find({})
     res.send(platform)
   } catch (err) {
-    res.status(500).send({ error: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const createPlatform = async (req, res, next) => {
@@ -29,7 +29,7 @@ export const deletePlatform = async (req, res) => {
     })
     res.status(200).json(platform)
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
 export const updatePlatform = async (req, res, next) => {

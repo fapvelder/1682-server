@@ -13,7 +13,7 @@ export const sendMessage = async (req, res) => {
     })
     return res.status(200).json(newMessage)
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
 export const getMessage = async (req, res) => {
@@ -34,7 +34,7 @@ export const getMessage = async (req, res) => {
     })
     return res.status(200).json(allMessages)
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
 export const getLastMessage = async (req, res) => {
@@ -60,7 +60,7 @@ export const getLastMessage = async (req, res) => {
 
     return res.status(200).json(formattedMessage)
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
 export const haveChattedBefore = async (req, res) => {
@@ -86,6 +86,6 @@ export const haveChattedBefore = async (req, res) => {
     }
     res.send(chattedUsers)
   } catch (err) {
-    res.status(500).json({ error: err })
+    res.status(500).json({ message: err.message })
   }
 }
