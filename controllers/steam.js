@@ -1,15 +1,8 @@
 // Controller
-import session from 'express-session'
 import passport from 'passport'
 import express from 'express'
 import { Strategy as SteamStrategy } from 'passport-steam'
-import {
-  SteamInventoryIterator,
-  PrivateInventoryError,
-  getInventory,
-} from 'steam-inventory-iterator'
-import SteamMarketFetcher from 'steam-market-fetcher'
-import { generateSteamToken } from '../utils.js'
+
 import jwt from 'jsonwebtoken'
 import { UserModel } from '../models/user.js'
 import convertor from 'steam-id-convertor'
@@ -20,6 +13,12 @@ import SteamCommunity from 'steamcommunity'
 import axios from 'axios'
 import { v4 as uuidv4 } from 'uuid'
 import { io } from '../index.js'
+import {
+  checkStatusSchema,
+  deleteSteamIDSchema,
+  sendSteamItemSchema,
+  updateSteamURLSchema,
+} from '../helpers/validation_schema.js'
 
 const app = express()
 app.use(passport.initialize())
@@ -141,6 +140,7 @@ export const handleAuthError = (req, res, next) => {
 }
 export const deleteSteamID = async (req, res) => {
   try {
+    await deleteSteamIDSchema.validateAsync(req.body)
     const user = await UserModel.updateOne(
       {
         'profile.steam.steamID': req.body.steamID,
@@ -175,7 +175,7 @@ export const getParams = (req, res, next) => {
 
 export const steamReturn = (req, res) => {
   try {
-    res.redirect('http://localhost:3000/settings')
+    res.redirect(`${process.env.FRONTEND_URL}/settings`)
   } catch (err) {
     res.status(500).json({ message: err.message })
   }
@@ -294,6 +294,7 @@ export const getInformation = async (req, res) => {
 }
 export const updateSteamURL = async (req, res) => {
   try {
+    await updateSteamURLSchema.validateAsync(req.body)
     const user = await UserModel.findOne({ _id: req.body.userID })
     const userPartnerID = user.profile.steam.partnerID
     const url = req.body.steamURL
@@ -321,11 +322,7 @@ export const updateSteamURL = async (req, res) => {
     res.status(500).json({ message: err.message })
   }
 }
-export async function test(req, res) {
-  console.log('here')
-  const status = 'okay'
-  return status
-}
+
 export const getItemOrder = async (req, res) => {
   try {
     console.log('started')
@@ -338,6 +335,7 @@ export const getItemOrder = async (req, res) => {
 }
 
 export async function sendSteamItem(req) {
+  await sendSteamItemSchema.validateAsync(req.body)
   return new Promise(async (resolve, reject) => {
     const appID = req.body.appID
     const version = req.body.version
@@ -487,7 +485,7 @@ export async function getSteamItem(req, res) {
   }
 }
 export const checkStatus = async (req, res) => {
-  // console.log(req.body.offerID)
+  await checkStatusSchema.validateAsync(req.body)
   const user = await UserModel.findOne({ pendingOffer: req.body.offerID })
   if (user) {
     const { status, item } = await pollItemStatus(req.body.offerID, 12)
@@ -548,61 +546,4 @@ export const pollItemStatus = async (offerID, maxPollAttempts) => {
     pollCount++
   }
   return { status, item }
-}
-
-// export const pollItemStatus = async (offerID) => {
-//   let status = ''
-//   let item = ''
-//   const state = TradeOfferSteam.ETradeOfferState
-//   const deniedState = [
-//     state.Countered,
-//     state.Expired,
-//     state.Invalid,
-//     state.Canceled,
-//     state.Declined,
-//   ]
-//   const checkOfferStatus = () => {
-//     manager.getOffer(offerID, (err, offer) => {
-//       if (err) {
-//         console.error('Error retrieving trade offer:', err)
-//         return
-//       }
-//       item = offer.itemsToReceive
-
-//       if (offer.state === 3) {
-//         status = 'ACCEPTED'
-//       } else if (deniedState.includes(offer.state)) {
-//         status = 'DENIED'
-//       }
-//     })
-//   }
-
-//   const pollInterval = 5000 // Interval in milliseconds
-//   const maxPollAttempts =  12 // Maximum number of polling attempts
-
-//   let pollCount = 0
-//   while (
-//     pollCount < maxPollAttempts &&
-//     status !== 'ACCEPTED' &&
-//     status !== 'DENIED'
-//   ) {
-//     await new Promise((resolve) => setTimeout(resolve, pollInterval))
-//     checkOfferStatus()
-//     pollCount++
-//   }
-//   return { status, item }
-// }
-
-function confirmTradeOffer(offerId) {
-  community.acceptConfirmationForObject(
-    process.env.IDENTITY_SECRET,
-    offerId,
-    (err) => {
-      if (err) {
-        console.error('Error confirming trade offer:', err)
-        return
-      }
-      console.log(`Trade offer #${offerId} confirmed successfully`)
-    }
-  )
 }

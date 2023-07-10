@@ -6,15 +6,15 @@ import {
   getProducts,
   getUserProducts,
 } from '../controllers/product.js'
-import { isAdmin } from '../utils.js'
+import { isAdmin, isAuth } from '../utils.js'
 
 import express from 'express'
 
 const router = express.Router()
-router.get('/', getProducts)
-router.post('/myProducts', getMyProducts)
-router.post('/details', getProductDetails)
-router.post('/user', getUserProducts)
-router.post('/create', createProduct)
-router.get('/search/product', findProduct)
+router.get('/', isAuth, getProducts)
+router.post('/myProducts', isAuth, getMyProducts)
+router.post('/details', isAuth, getProductDetails)
+router.post('/user', isAuth, getUserProducts)
+router.post('/create', isAuth, createProduct)
+router.get('/search/product', isAuth, findProduct)
 export default router

@@ -1,10 +1,10 @@
 import { createComment, getCommentByProductID } from '../controllers/comment.js'
-import { isAdmin } from '../utils.js'
+import { isAdmin, isAuth } from '../utils.js'
 
 import express from 'express'
 
 const router = express.Router()
-router.post('/productComment', getCommentByProductID)
-router.post('/create', createComment)
+router.post('/productComment', isAuth, getCommentByProductID)
+router.post('/create', isAuth, createComment)
 
 export default router

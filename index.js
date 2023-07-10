@@ -21,6 +21,7 @@ import vnpay from './routers/vnpay.js'
 import products from './routers/product.js'
 import comments from './routers/comment.js'
 import feedbacks from './routers/feedback.js'
+import chatGPT from './routers/chatGPT.js'
 import notifications from './routers/notifications.js'
 import orders from './routers/order.js'
 import session from 'express-session'
@@ -30,18 +31,18 @@ import { NotificationModel } from './models/notification.js'
 import { sendNotification } from './controllers/notification.js'
 
 dotenv.config()
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+// const __filename = fileURLToPath(import.meta.url)
+// const __dirname = path.dirname(__filename)
 
-const app = express()
+export const app = express()
 const PORT = process.env.port || 5000
 app.use(bodyParser.json({ limit: '30mb' }))
 app.use(bodyParser.urlencoded({ limit: '30mb' }))
 app.use(morgan('combined'))
 app.use(cookieParser())
 const allowOrigin = [
-  'http://localhost:3000',
-  'http://localhost:5000',
+  process.env.FRONTEND_URL,
+  process.env.BACKEND_URL,
   'https://steamcommunity.com/',
   'https://steamcommunity.com/openid/login',
   'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
@@ -95,11 +96,11 @@ const server = app.listen(5000, () => {
   console.log('server is listening on port 5000')
 })
 //steam config
-loginSteam()
+// loginSteam()
 //
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -117,6 +118,7 @@ app.use('/vnpay', vnpay)
 app.use('/orders', orders)
 app.use('/comments', comments)
 app.use('/feedbacks', feedbacks)
+app.use('/chatGPT', chatGPT)
 app.use('/notifications', notifications)
 global.onlineUsers = new Map()
 io.on('connection', (socket) => {

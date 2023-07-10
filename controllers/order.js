@@ -1,9 +1,16 @@
+import {
+  buyProductSchema,
+  cancelOrderSchema,
+  completeOrderSchema,
+  feedbackOrderSchema,
+  getItemOrderSchema,
+  transferItemSchema,
+} from '../helpers/validation_schema.js'
 import { FeedbackModel, OrderModel } from '../models/order.js'
 import { ProductModel } from '../models/product.js'
 import { UserModel } from '../models/user.js'
-import { sendNotification } from './notification.js'
-import { getSteamItem, sendSteamItem, test } from './steam.js'
-import { ObjectId } from 'mongodb'
+import { sendSteamItem } from './steam.js'
+
 export const getOrders = async (req, res) => {
   try {
     const orders = await OrderModel.find({})
@@ -17,6 +24,7 @@ export const getOrders = async (req, res) => {
       .populate('buyer', 'fullName displayName slug avatar profile')
       .populate('seller', 'fullName displayName slug avatar profile')
       .sort({ createdAt: -1 })
+      .exec()
     res.status(200).send(orders)
   } catch (err) {
     res.status(500).send({ message: err.message })
@@ -35,6 +43,7 @@ export const getOrderDetails = async (req, res) => {
       })
       .populate('buyer', 'fullName displayName slug avatar profile')
       .populate('seller', 'fullName displayName slug avatar profile')
+      .exec()
     res.status(200).send(order)
   } catch (err) {
     res.status(500).send({ message: err.message })
@@ -43,6 +52,7 @@ export const getOrderDetails = async (req, res) => {
 
 export const buyProduct = async (req, res) => {
   try {
+    await buyProductSchema.validateAsync(req.body)
     const product = await ProductModel.findOne({ _id: req.body.productID })
     const user = await UserModel.findOne({ _id: req.body.userID })
     if (!user.profile.steam.steamTradeURL) {
@@ -93,6 +103,7 @@ export const buyProduct = async (req, res) => {
 
 export const getItemOrder = async (req, res) => {
   try {
+    await getItemOrderSchema.validateAsync(req.body)
     const order = await OrderModel.findOne({ _id: req.body.orderID })
     if (!order) {
       return res.status(404).send({ message: 'Order not found' })
@@ -126,9 +137,10 @@ export const getItemOrder = async (req, res) => {
 }
 export const completeOrder = async (req, res) => {
   try {
-    const order = await OrderModel.findOne({ _id: req.body.orderID }).populate(
-      'product'
-    )
+    await completeOrderSchema.validateAsync(req.body)
+    const order = await OrderModel.findOne({ _id: req.body.orderID })
+      .populate('product')
+      .exec()
     if (!order) {
       return res.status(404).send({ message: 'Order not found' })
     }
@@ -157,6 +169,7 @@ export const completeOrder = async (req, res) => {
 }
 export const feedbackOrder = async (req, res) => {
   try {
+    await feedbackOrderSchema.validateAsync(req.body)
     const order = await OrderModel.findOne({ _id: req.body.orderID })
     if (order.isFeedback) {
       return res.status(403).send({ message: 'Order has been feedback' })
@@ -178,13 +191,16 @@ export const feedbackOrder = async (req, res) => {
 }
 export const transferItem = async (req, res) => {
   try {
-    const order = await OrderModel.findOne({ _id: req.body.orderID }).populate({
-      path: 'product',
-      populate: [
-        { path: 'category', model: 'Category' },
-        { path: 'platform', model: 'Platform' },
-      ],
-    })
+    await transferItemSchema.validateAsync(req.body)
+    const order = await OrderModel.findOne({ _id: req.body.orderID })
+      .populate({
+        path: 'product',
+        populate: [
+          { path: 'category', model: 'Category' },
+          { path: 'platform', model: 'Platform' },
+        ],
+      })
+      .exec()
     if (!order) {
       return res.status(404).send({ message: 'Order not found' })
     }
@@ -193,7 +209,6 @@ export const transferItem = async (req, res) => {
         .status(403)
         .send({ message: 'You do not have permission to do this' })
     }
-    console.log(req.body)
     if (order.product.category.name !== 'Game Items') {
       if (req.body.code === '') {
         return res
@@ -213,10 +228,10 @@ export const transferItem = async (req, res) => {
 }
 export const cancelOrder = async (req, res) => {
   try {
-    const order = await OrderModel.findOne({ _id: req.body.orderID }).populate(
-      'product'
-    )
-    console.log(order)
+    await cancelOrderSchema.validateAsync(req.body)
+    const order = await OrderModel.findOne({ _id: req.body.orderID })
+      .populate('product')
+      .exec()
 
     if (order.status === 'Completed' || order.status === 'Cancelled') {
       return res

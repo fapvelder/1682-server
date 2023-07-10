@@ -13,10 +13,18 @@ import {
   transporter,
 } from '../utils.js'
 import {
+  addFundWalletSchema,
+  deleteUserCommunicationSchema,
   forgotPasswordSchema,
   registerUserSchema,
   resetPasswordSchema,
-  updateUserByAdminSchema,
+  sendSecretSchema,
+  updatePasswordSchema,
+  updateUserAvatarSchema,
+  updateUserBioSchema,
+  updateUserCommunicationSchema,
+  updateUserDisplayNameSchema,
+  updateUserRoleSchema,
   updateUserSchema,
 } from '../helpers/validation_schema.js'
 import { RoleModel } from '../models/role.js'
@@ -155,6 +163,13 @@ export const registerGoogleUsers = async (req, res) => {
         console.log('Email sent: ' + info.response)
       }
     })
+    const refreshToken = generateRefreshToken(user)
+    res.cookie('refresh', refreshToken, {
+      httpOnly: true,
+      secure: false,
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
+    })
     res.send({
       _id: user._id,
       token: generateAccessToken(user),
@@ -195,16 +210,8 @@ export const registerUser = async (req, res, next) => {
       fullName: req.body.fullName,
       role: role._id,
       slug: createSlug(req.body.fullName),
-
       password: bcrypt.hashSync(req.body.password),
     })
-    // await newUser.updateOne(
-    //   {
-    //     'profile.steam.steamID': req.body.steamID,
-    //     'profile.steam': { $exists: true },
-    //   },
-    //   { $unset: { 'profile.steam': 1 } }
-    // )
     const user = await newUser.save()
     let mailOptions = {
       from: process.env.GMAIL_USER,
@@ -226,6 +233,13 @@ export const registerUser = async (req, res, next) => {
       } else {
         console.log('Email sent: ' + info.response)
       }
+    })
+    const refreshToken = generateRefreshToken(user)
+    res.cookie('refresh', refreshToken, {
+      httpOnly: true,
+      secure: false,
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
     })
     res.send({
       _id: user._id,
@@ -250,6 +264,7 @@ export const logout = async (req, res) => {
 }
 export const updatePassword = async (req, res) => {
   try {
+    await updatePasswordSchema.validateAsync(req.body)
     const user = await UserModel.findOne({ _id: req.body.userID })
     if (user) {
       if (bcrypt.compareSync(req.body.oldPassword, user.password)) {
@@ -289,6 +304,8 @@ export const deleteUser = async (req, res) => {
 }
 export const updateUserRole = async (req, res) => {
   try {
+    await updateUserRoleSchema.validateAsync(req.body)
+    console.log('update role')
     const updatedUser = req.body
     const user = await UserModel.findByIdAndUpdate(
       { _id: updatedUser.userID },
@@ -306,9 +323,9 @@ export const updateUserRole = async (req, res) => {
     res.status(500).json({ message: err.message })
   }
 }
-
 export const updateUserAvatar = async (req, res, next) => {
   try {
+    await updateUserAvatarSchema.validateAsync(req.body)
     const user = await UserModel.findById(req.body.userID)
     if (user) {
       const fileStr = req.body.data || req.data
@@ -330,6 +347,7 @@ export const updateUserAvatar = async (req, res, next) => {
 }
 export const updateUserBio = async (req, res, next) => {
   try {
+    await updateUserBioSchema.validateAsync(req.body)
     const user = await UserModel.findOne({ _id: req.body.userID })
     if (user) {
       user.profile.bio = req.body.bio || user.profile.bio
@@ -344,6 +362,7 @@ export const updateUserBio = async (req, res, next) => {
 }
 export const updateUserDisplayName = async (req, res, next) => {
   try {
+    await updateUserDisplayNameSchema.validateAsync(req.body)
     const user = await UserModel.findOne({ _id: req.body.userID })
     if (user) {
       user.displayName = req.body.displayName || user.displayName
@@ -358,6 +377,7 @@ export const updateUserDisplayName = async (req, res, next) => {
 }
 export const updateUserCommunication = async (req, res, next) => {
   try {
+    await updateUserCommunicationSchema.validateAsync(req.body)
     const newCommunication = {
       language: req.body.language,
       proficiency: req.body.proficiency,
@@ -380,6 +400,7 @@ export const updateUserCommunication = async (req, res, next) => {
 }
 export const deleteUserCommunication = async (req, res, next) => {
   try {
+    await deleteUserCommunicationSchema.validateAsync(req.body)
     const communication = await UserModel.updateOne(
       { _id: req.body.userID },
       { $pull: { 'profile.communication': { _id: req.body.communicationID } } },
@@ -471,8 +492,10 @@ export const resetPassword = async (req, res, next) => {
     next(err)
   }
 }
+
 export const addFundWallet = async (req, res) => {
   try {
+    await addFundWalletSchema.validateAsync(req.body)
     const user = await UserModel.findOne({ _id: req.body.userID })
     if (user) {
       user.wallet = Number(user.wallet) + Number(req.body.amount)
@@ -487,6 +510,7 @@ export const addFundWallet = async (req, res) => {
 }
 export const sendSecret = async (req, res) => {
   try {
+    await sendSecretSchema.validateAsync(req.body)
     const user = await UserModel.findOne({ _id: req.body.userID })
     const secret = generateRandomSecret()
     user.secretToken = secret

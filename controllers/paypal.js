@@ -3,6 +3,12 @@ import { UserModel } from '../models/user.js'
 import moment from 'moment'
 import querystring from 'qs'
 import crypto from 'crypto'
+import {
+  capturePaymentSchema,
+  createOrderSchema,
+  payoutSchema,
+  pollTransactionStatusSchema,
+} from '../helpers/validation_schema.js'
 const { CLIENT_ID, APP_SECRET } = process.env
 const baseURL = {
   sandbox: 'https://api-m.sandbox.paypal.com',
@@ -10,6 +16,7 @@ const baseURL = {
 }
 
 export async function createOrder(req, res) {
+  await createOrderSchema.validateAsync(req.body)
   const accessToken = await generatePaypalAccessToken()
   const url = `${baseURL.sandbox}/v2/checkout/orders`
   const response = await fetch(url, {
@@ -36,6 +43,7 @@ export async function createOrder(req, res) {
 
 // use the orders api to capture payment for an order
 export async function capturePayment(req, res) {
+  await capturePaymentSchema.validateAsync(req.body)
   const { orderID } = req.body
 
   const accessToken = await generatePaypalAccessToken()
@@ -79,6 +87,7 @@ export async function capturePayment(req, res) {
   res.send(data)
 }
 export async function payout(req, res) {
+  await payoutSchema.validateAsync(req.body)
   const accessToken = await generatePaypalAccessToken()
   const user = await UserModel.findOne({ _id: req.body.userID })
   const date = new Date()
@@ -159,6 +168,7 @@ export const checkPaypalTransaction = async (payoutID) => {
   }
 }
 export async function pollTransactionStatus(payoutID) {
+  await pollTransactionStatusSchema.validateAsync({ payoutID })
   let status = ''
   while (status !== 'SUCCESS') {
     status = await checkPaypalTransaction(payoutID)

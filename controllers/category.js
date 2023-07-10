@@ -1,19 +1,25 @@
+import {
+  createCategorySchema,
+  createSubCategorySchema,
+  deleteCategorySchema,
+  deleteSubCategorySchema,
+} from '../helpers/validation_schema.js'
 import { CategoryModel } from '../models/category.js'
 import { PlatformModel } from '../models/platform.js'
 import { v2 as cloudinary } from 'cloudinary'
-
 export const getCategory = async (req, res) => {
   try {
     const category = await CategoryModel.find({})
       .populate('subCategory.subCategoryName')
       .lean()
-    res.send(category)
+    res.status(200).send(category)
   } catch (err) {
     res.status(500).send({ message: err.message })
   }
 }
 export const createCategory = async (req, res, next) => {
   try {
+    await createCategorySchema.validateAsync(req.body)
     const fileStr = req.body.img
     let imgURL
     if (fileStr) {
@@ -38,13 +44,14 @@ export const createCategory = async (req, res, next) => {
 }
 export const deleteCategory = async (req, res) => {
   try {
+    await deleteCategorySchema.validateAsync(req.params)
     const deleteCategory = req.params.id
     const category = await CategoryModel.findByIdAndDelete(deleteCategory, {
       new: true,
     })
-    res.status(200).json(category)
+    res.status(200).send(category)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const updateCategory = async (req, res, next) => {
@@ -64,8 +71,9 @@ export const updateCategory = async (req, res, next) => {
   }
 }
 // subcate
-export const createSubCategory = async (req, res, next) => {
+export const createSubCategory = async (req, res) => {
   try {
+    await createSubCategorySchema.validateAsync(req.body)
     const fileStr = req.body.img
     let imgURL
     if (fileStr) {
@@ -96,10 +104,10 @@ export const createSubCategory = async (req, res, next) => {
 }
 export const deleteSubCategory = async (req, res, next) => {
   try {
+    await deleteSubCategorySchema.validateAsync(req.body)
     const category = await CategoryModel.updateOne(
       { _id: req.body.categoryID },
       { $pull: { subCategory: { _id: req.body.subCategoryID } } },
-
       { new: true }
     )
     if (category) {

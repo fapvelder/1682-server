@@ -2,6 +2,10 @@ import { ProductModel } from '../models/product.js'
 import { CategoryModel } from '../models/category.js'
 import { UserModel } from '../models/user.js'
 import { v2 as cloudinary } from 'cloudinary'
+import {
+  createProductSchema,
+  findProductSchema,
+} from '../helpers/validation_schema.js'
 
 export const getProducts = async (req, res) => {
   try {
@@ -53,6 +57,7 @@ export const getUserProducts = async (req, res) => {
 }
 export const createProduct = async (req, res) => {
   try {
+    await createProductSchema.validateAsync(req.body)
     const body = req.body
     const category = await CategoryModel.findOne({ name: body.category }).exec()
     const subCategory = category.subCategory.find(
@@ -106,6 +111,7 @@ export const createProduct = async (req, res) => {
 }
 export const findProduct = async (req, res) => {
   try {
+    await findProductSchema.validateAsync(req.query)
     const {
       search,
       category,
