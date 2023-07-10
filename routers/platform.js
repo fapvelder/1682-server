@@ -1,4 +1,4 @@
-import { isAdmin } from '../utils.js'
+import { isAdmin, isAuth } from '../utils.js'
 import {
   createPlatform,
   deletePlatform,
@@ -8,8 +8,8 @@ import {
 import express from 'express'
 
 const router = express.Router()
-router.get('/', getPlatform)
-router.post('/create', createPlatform)
-router.delete('/delete/:id', isAdmin, deletePlatform)
-router.put('/update', isAdmin, updatePlatform)
+router.get('/', isAuth, getPlatform)
+router.post('/create', isAuth, createPlatform)
+router.delete('/delete/:id', isAuth, isAdmin, deletePlatform)
+router.put('/update', isAuth, isAdmin, updatePlatform)
 export default router

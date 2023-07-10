@@ -1,4 +1,7 @@
-import { io } from '../index.js'
+import {
+  deleteNotificationSchema,
+  sendNotificationSchema,
+} from '../helpers/validation_schema.js'
 import { NotificationModel } from '../models/notification.js'
 import { UserModel } from '../models/user.js'
 export const getAllNotifications = async (req, res) => {
@@ -13,6 +16,7 @@ export const getAllNotifications = async (req, res) => {
 }
 export const sendNotification = async (userID, message) => {
   try {
+    await sendNotificationSchema.validateAsync({ userID, message })
     const user = await UserModel.findOne({ _id: userID })
     if (user) {
       const newNotification = new NotificationModel({
@@ -20,14 +24,14 @@ export const sendNotification = async (userID, message) => {
         userID: user._id,
       })
       await newNotification.save()
-      //   io.to(user.socketID).emit('newNotification', notification)
     }
   } catch (err) {
-    console.error('Error saving notification:', err)
+    res.status(500).send({ message: err.message })
   }
 }
 export const deleteNotification = async (req, res) => {
   try {
+    await deleteNotificationSchema.validateAsync(req.params)
     const deleteNotification = req.params.id
     const notification = await NotificationModel.findByIdAndDelete(
       deleteNotification,

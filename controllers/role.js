@@ -1,5 +1,6 @@
 import {
   createRoleSchema,
+  deleteRoleSchema,
   updateRoleSchema,
 } from '../helpers/validation_schema.js'
 import { RoleModel } from '../models/role.js'
@@ -27,6 +28,7 @@ export const createRole = async (req, res, next) => {
 }
 export const deleteRole = async (req, res) => {
   try {
+    await deleteRoleSchema.validateAsync(req.params)
     const deleteRole = req.params.id
     const role = await RoleModel.findByIdAndDelete(deleteRole, { new: true })
     res.status(200).json(role)
@@ -36,7 +38,7 @@ export const deleteRole = async (req, res) => {
 }
 export const updateRole = async (req, res, next) => {
   try {
-    await updateRoleSchema.validateAsymc(req.body)
+    await updateRoleSchema.validateAsync(req.body)
     const updateRole = req.body
     const role = await RoleModel.findByIdAndUpdate(
       { _id: updateRole._id },

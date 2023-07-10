@@ -1,3 +1,7 @@
+import {
+  createPlatformSchema,
+  deletePlatformSchema,
+} from '../helpers/validation_schema.js'
 import { PlatformModel } from '../models/platform.js'
 
 export const getPlatform = async (req, res) => {
@@ -10,6 +14,7 @@ export const getPlatform = async (req, res) => {
 }
 export const createPlatform = async (req, res, next) => {
   try {
+    await createPlatformSchema.validateAsync(req.body)
     const newPlatform = req.body
     const platform = new PlatformModel(newPlatform)
     await platform.save()
@@ -23,6 +28,7 @@ export const createPlatform = async (req, res, next) => {
 }
 export const deletePlatform = async (req, res) => {
   try {
+    await deletePlatformSchema.validateAsync(req.params)
     const deletePlatform = req.params.id
     const platform = await PlatformModel.findByIdAndDelete(deletePlatform, {
       new: true,

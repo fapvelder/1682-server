@@ -19,6 +19,7 @@ export const getUserFeedback = async (req, res) => {
           populate: { path: 'category', select: 'name' },
         },
       })
+      .exec()
 
     res.status(200).send(feedbacks)
   } catch (err) {
@@ -37,6 +38,7 @@ export const getFeedback = async (req, res) => {
           populate: { path: 'category', select: 'name' },
         },
       })
+      .exec()
 
     res.status(200).send(feedbacks)
   } catch (err) {

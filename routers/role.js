@@ -7,8 +7,8 @@ import {
 } from '../controllers/role.js'
 import { isAdmin } from '../utils.js'
 const router = express.Router()
-router.get('/', getRole)
-router.post('/create', createRole)
+router.get('/', isAdmin, getRole)
+router.post('/create', isAdmin, createRole)
 router.delete('/delete/:id', isAdmin, deleteRole)
 router.put('/update', isAdmin, updateRole)
 export default router

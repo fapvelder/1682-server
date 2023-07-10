@@ -3,7 +3,9 @@ import querystring from 'qs'
 import crypto from 'crypto'
 import request from 'request'
 import { UserModel } from '../models/user.js'
+import { createPaymentURLSchema } from '../helpers/validation_schema.js'
 export const createPaymentURL = async (req, res) => {
+  await createPaymentURLSchema.validateAsync(req.body)
   const user = await UserModel.findOne({ _id: req.body.userID })
   if (user) {
     let date = new Date()
@@ -147,7 +149,9 @@ export const VNPayReturn = (req, res) => {
   if (secureHash === signed) {
     //Kiem tra xem du lieu trong db co hop le hay khong va thong bao ket qua
     const status = vnp_Params['vnp_ResponseCode']
-    res.redirect(`http://localhost:3000/wallet?vnp_TransactionStatus=${status}`)
+    res.redirect(
+      `${process.env.FRONTEND_URL}/wallet?vnp_TransactionStatus=${status}`
+    )
   } else {
     res.render('success', { code: '97' })
   }
@@ -161,9 +165,6 @@ export const checkVNPayTransaction = async (
   let vnp_TmnCode = process.env.vnp_TmnCode
   let secretKey = process.env.vnp_HashSecret
   let vnp_Api = process.env.vnp_Api
-
-  //   let vnp_TxnRef = req.body.orderId
-  //   let vnp_TransactionDate = req.body.transDate
 
   let vnp_RequestId = moment(date).format('HHmmss')
   let vnp_Version = '2.1.0'

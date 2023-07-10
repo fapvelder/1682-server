@@ -10,11 +10,11 @@ import {
 import express from 'express'
 
 const router = express.Router()
-router.get('/', getCategory)
-router.post('/create', createCategory)
+router.get('/', isAuth, getCategory)
+router.post('/create', isAdmin, createCategory)
 router.delete('/delete/:id', isAdmin, deleteCategory)
 router.put('/update', isAdmin, updateCategory)
-router.put('/update/subCategory', isAuth, createSubCategory)
-router.put('/delete/subCategory', isAuth, deleteSubCategory)
+router.put('/update/subCategory', isAdmin, createSubCategory)
+router.put('/delete/subCategory', isAdmin, deleteSubCategory)
 
 export default router

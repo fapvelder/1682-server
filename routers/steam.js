@@ -4,9 +4,7 @@ import {
   getInformation,
   getItem,
   getPriceItem,
-  getParams,
   steamReturn,
-  handleAuthError,
   deleteSteamID,
   updateSteamURL,
   getSteamItem,
@@ -17,16 +15,14 @@ import { isAuth } from '../utils.js'
 
 const router = express.Router()
 
-// router.post('/auth/steam/', authSteam)
-
-router.get('/auth/steam/return/', authSteam, steamReturn)
-router.put('/item', getItem)
-router.post('/get-price', getPriceItem)
-router.post('/information', getInformation)
-router.post('/delete', deleteSteamID)
-router.put('/update/steamURL', updateSteamURL)
-router.post('/getItem', getSteamItem)
-router.post('/sendItem', sendSteamItem)
-router.post('/checkStatus', checkStatus)
+router.get('/auth/steam/return/', authSteam, isAuth, steamReturn)
+router.put('/item', isAuth, getItem)
+router.post('/get-price', isAuth, getPriceItem)
+router.post('/information', isAuth, getInformation)
+router.post('/delete', isAuth, deleteSteamID)
+router.put('/update/steamURL', isAuth, updateSteamURL)
+router.post('/getItem', isAuth, getSteamItem)
+router.post('/sendItem', isAuth, sendSteamItem)
+router.post('/checkStatus', isAuth, checkStatus)
 
 export default router

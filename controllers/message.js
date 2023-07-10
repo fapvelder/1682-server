@@ -1,19 +1,18 @@
 import { MessageModel } from '../models/message.js'
 import { UserModel } from '../models/user.js'
-import bcrypt from 'bcryptjs'
-import { v2 as cloudinary } from 'cloudinary'
-import jwt from 'jsonwebtoken'
+import { sendMessageSchema } from '../helpers/validation_schema.js'
 export const sendMessage = async (req, res) => {
   try {
+    await sendMessageSchema.validateAsync(req.body)
     const { from, to, message } = req.body
     const newMessage = await MessageModel.create({
       message: message,
       chatUsers: [from, to],
       sender: from,
     })
-    return res.status(200).json(newMessage)
+    return res.status(200).send(newMessage)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const getMessage = async (req, res) => {
@@ -24,7 +23,9 @@ export const getMessage = async (req, res) => {
       chatUsers: {
         $all: [from, to],
       },
-    }).sort({ updatedAt: 1 })
+    })
+      .sort({ updatedAt: 1 })
+      .exec()
     const allMessages = newMessage.map((msg) => {
       return {
         id: msg._id,
@@ -32,9 +33,9 @@ export const getMessage = async (req, res) => {
         message: msg.message,
       }
     })
-    return res.status(200).json(allMessages)
+    return res.status(200).send(allMessages)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const getLastMessage = async (req, res) => {
@@ -46,10 +47,12 @@ export const getLastMessage = async (req, res) => {
       chatUsers: {
         $all: [from, to],
       },
-    }).sort({ updatedAt: -1 })
+    })
+      .sort({ updatedAt: -1 })
+      .exec()
 
     if (!lastMessage) {
-      return res.status(200).json(null) // Return null if there are no messages
+      return res.status(200).send(null) // Return null if there are no messages
     }
 
     const formattedMessage = {
@@ -58,9 +61,9 @@ export const getLastMessage = async (req, res) => {
       message: lastMessage.message,
     }
 
-    return res.status(200).json(formattedMessage)
+    return res.status(200).send(formattedMessage)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 }
 export const haveChattedBefore = async (req, res) => {
@@ -86,6 +89,6 @@ export const haveChattedBefore = async (req, res) => {
     }
     res.send(chattedUsers)
   } catch (err) {
-    res.status(500).json({ message: err.message })
+    res.status(500).send({ message: err.message })
   }
 }

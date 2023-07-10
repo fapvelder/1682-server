@@ -5,11 +5,12 @@ import {
   haveChattedBefore,
   sendMessage,
 } from '../controllers/message.js'
+import { isAuth } from '../utils.js'
 // import { isAuth, isAdmin } from '../utils.js'
 const router = express.Router()
 
-router.post('/sendMessage', sendMessage)
-router.get('/get/msg/:user1Id/:user2Id', getMessage)
-router.get('/get/lastMsg/:user1Id/:user2Id', getLastMessage)
-router.post('/have-chatted-before', haveChattedBefore)
+router.post('/sendMessage', isAuth, sendMessage)
+router.get('/get/msg/:user1Id/:user2Id', isAuth, getMessage)
+router.get('/get/lastMsg/:user1Id/:user2Id', isAuth, getLastMessage)
+router.post('/have-chatted-before', isAuth, haveChattedBefore)
 export default router
