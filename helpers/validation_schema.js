@@ -171,7 +171,7 @@ export const createProductSchema = joi.object({
   visibility: joi.string().valid('Public', 'Unlisted').required(),
   deliveryMethod: joi.string().required(),
   deliveryIn: joi.string().required(),
-  item: joi.string().allow(''),
+  item: joi.allow(''),
   code: joi.string().allow(''),
 })
 export const findProductSchema = joi.object({
