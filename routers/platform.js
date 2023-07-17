@@ -8,7 +8,7 @@ import {
 import express from 'express'
 
 const router = express.Router()
-router.get('/', isAuth, getPlatform)
+router.get('/', getPlatform)
 router.post('/create', isAuth, createPlatform)
 router.delete('/delete/:id', isAuth, isAdmin, deletePlatform)
 router.put('/update', isAuth, isAdmin, updatePlatform)
