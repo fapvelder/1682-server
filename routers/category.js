@@ -10,7 +10,7 @@ import {
 import express from 'express'
 
 const router = express.Router()
-router.get('/', isAuth, getCategory)
+router.get('/', getCategory)
 router.post('/create', isAdmin, createCategory)
 router.delete('/delete/:id', isAdmin, deleteCategory)
 router.put('/update', isAdmin, updateCategory)

@@ -11,7 +11,7 @@ import { isAdmin, isAuth } from '../utils.js'
 import express from 'express'
 
 const router = express.Router()
-router.get('/', isAuth, getProducts)
+router.get('/', getProducts)
 router.post('/myProducts', isAuth, getMyProducts)
 router.post('/details', isAuth, getProductDetails)
 router.post('/user', isAuth, getUserProducts)
