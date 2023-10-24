@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 
 const notificationSchema = new mongoose.Schema(
   {
-    message: String,
+    message: { type: Object },
     userID: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

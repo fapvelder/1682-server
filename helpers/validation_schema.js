@@ -117,6 +117,10 @@ export const buyProductSchema = joi.object({
 export const getItemOrderSchema = joi.object({
   orderID: joi.string().required(),
   receiverID: joi.string().required(),
+  userID: joi.string().required(),
+  appID: joi.allow(''),
+  version: joi.allow(''),
+  classID: joi.allow(''),
 })
 export const completeOrderSchema = joi.object({
   orderID: joi.string().required(),
@@ -206,9 +210,10 @@ export const updateSteamURLSchema = joi.object({
   steamURL: joi.string().required(),
 })
 export const sendSteamItemSchema = joi.object({
-  appID: joi.string().required(),
-  version: joi.string().required(),
-  classID: joi.string().required(),
+  orderID: joi.allow(''),
+  appID: joi.allow(''),
+  version: joi.allow(''),
+  classID: joi.allow(''),
   userID: joi.string().required(),
   receiverID: joi.string().required(),
 })

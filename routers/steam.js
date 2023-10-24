@@ -10,6 +10,8 @@ import {
   getSteamItem,
   checkStatus,
   sendSteamItem,
+  getInventory,
+  tradeCSGOItems,
 } from '../controllers/steam.js'
 import { isAuth } from '../utils.js'
 
@@ -24,5 +26,7 @@ router.put('/update/steamURL', isAuth, updateSteamURL)
 router.post('/getItem', isAuth, getSteamItem)
 router.post('/sendItem', isAuth, sendSteamItem)
 router.post('/checkStatus', isAuth, checkStatus)
-
+router.post('/inventory/', getInventory)
+router.post('/trade/csgo', tradeCSGOItems)
+// router.get('/inventory/user', getUserInventory)
 export default router

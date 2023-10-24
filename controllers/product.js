@@ -181,3 +181,24 @@ export const findProduct = async (req, res) => {
     res.status(500).send({ message: err.message })
   }
 }
+export const editProduct = async (req, res) => {
+  try {
+    const product = await ProductModel.findOne({ _id: req.body.productID })
+    if (!product) {
+      return res.status(404).send({ message: 'Product not found' })
+    }
+    if (product.listingBy._id.toString() !== req.body.userID) {
+      return res
+        .status(403)
+        .send({ message: 'You do not have permission to do this' })
+    }
+    product.title = req.body.title || product.title
+    product.description = req.body.description || product.description
+    product.price = req.body.price || product.price
+    product.visibility = req.body.visibility || product.visibility
+    await product.save()
+    res.status(200).send({ message: 'Edit product successfully' })
+  } catch (err) {
+    res.status(500).send({ message: err.message })
+  }
+}

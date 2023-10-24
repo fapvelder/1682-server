@@ -77,6 +77,7 @@ const userSchema = new mongoose.Schema(
     resetPasswordToken: { type: String, required: false },
     resetPasswordExpires: { type: Date, required: false },
     lastPasswordResetAt: { type: Date, required: false },
+    lastInventoryResetAt: { type: Date, required: false },
     profile: {
       phoneNumber: { type: String },
       coverPhoto: { type: String },
@@ -105,6 +106,9 @@ const userSchema = new mongoose.Schema(
       },
       isVerified: { type: Boolean, required: false },
       communication: [communicationSchema],
+    },
+    tradeItem: {
+      type: mongoose.Schema.Types.Mixed,
     },
     // userFeedback: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Feedback' }],
     shippingAddresses: [{ type: addressSchema }],
