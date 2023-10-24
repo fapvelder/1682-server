@@ -19,6 +19,7 @@ import {
   sendSteamItemSchema,
   updateSteamURLSchema,
 } from '../helpers/validation_schema.js'
+import { LoginSession, EAuthTokenPlatformType } from 'steam-session'
 
 const app = express()
 app.use(passport.initialize())
@@ -36,39 +37,44 @@ const logInOptions = {
   password: process.env.PASSWORD,
   twoFactorCode: SteamTotp.generateAuthCode(process.env.SHARED_SECRET),
 }
-export const loginSteam = () => {
+
+export const loginSteam = async () => {
   client.logOn(logInOptions)
   client.on('loggedOn', () => {
     console.log('logged on')
     client.setPersona(SteamUser.EPersonaState.Online)
   })
   setTimeout(() => {
-    community.login(
-      {
-        accountName: process.env.ACCOUNT_NAME,
-        password: process.env.PASSWORD,
-        twoFactorCode: SteamTotp.getAuthCode(process.env.SHARED_SECRET),
-        // disableMobile: false,
-      },
-      (err, sessionID, cookies, steamguard) => {
-        if (err) {
-          console.error('Login error:', err)
-          return
-        } else {
-          console.log('community logged in')
-        }
-      }
-    )
+    let session = new LoginSession(EAuthTokenPlatformType.WebBrowser)
+    session.startWithCredentials({
+      accountName: process.env.ACCOUNT_NAME,
+      password: process.env.PASSWORD,
+      steamGuardCode: SteamTotp.generateAuthCode(process.env.SHARED_SECRET),
+    })
+    session.on('authenticated', async () => {
+      let webCookies = await session.getWebCookies()
+      let sessionIdCookie = webCookies.find((c) => c.startsWith('sessionid='))
+      community.setCookies(webCookies)
+      console.log('community set cookie')
+      // console.log({
+      //   sessionID: sessionIdCookie.split('=')[1],
+      //   cookies: webCookies,
+      //   steamguard: session.steamGuardMachineToken,
+      // })
+    })
+    session.on('error', (err) => {
+      console.log(err)
+    })
   }, 35000)
 
   client.on('webSession', (sessionID, cookies) => {
     manager.setCookies(cookies)
-    community.setCookies(cookies)
+    // community.setCookies(cookies)
   })
   community.on('debug', console.log)
 
   manager.on('newOffer', (offer) => {
-    console.log('offer deteced')
+    console.log('offer detected')
     if (offer.partner.getSteamID64 === '76561198255066121') {
       // id của người gửi, nếu đúng sẽ accept
       offer.accept((err, status) => {
@@ -277,7 +283,7 @@ export const getPriceItem = async (req, res) => {
     )
     res.send(result)
   } catch (error) {
-    console.error('An error occurred: ')
+    console.error('An error occurred: ', error.message)
   }
 }
 export const getInformation = async (req, res) => {
@@ -339,7 +345,8 @@ export async function sendSteamItem(req) {
   return new Promise(async (resolve, reject) => {
     const appID = req.body.appID
     const version = req.body.version
-    const itemID = req.body.classID
+    const classID = req.body.classID
+    const assetID = req.body.assetID
     const user = await UserModel.findOne({ _id: req.body.userID })
     const receiver = await UserModel.findOne({ _id: req.body.receiverID })
 
@@ -347,10 +354,10 @@ export async function sendSteamItem(req) {
       reject(new Error('User not found'))
     }
 
-    const item = user.itemHeld.find((item) => item.classid === itemID)
-    if (!item) {
-      reject(new Error("Item not found in user's inventory"))
-    }
+    // const item = user.itemHeld.find((item) => item.assetid === assetID)
+    // if (!item) {
+    //   reject(new Error("Item not found in user's inventory"))
+    // }
 
     console.log('find item')
     manager.loadInventory(appID, version, true, (err, inventory) => {
@@ -362,55 +369,59 @@ export async function sendSteamItem(req) {
         const offer = manager.createOffer(receiver.profile.steam.steamTradeURL)
         // Gửi đến id người nhận
         inventory.forEach(function (item) {
-          if (item.classid === itemID) {
-            itemFound = true
-            offer.addMyItem(item)
-            console.log('add item')
-            offer.setMessage('We send you item')
-            offer.send((err, status) => {
-              if (err) {
-                console.log(err)
-                reject(new Error('Failed to send offer'))
-              } else {
-                console.log('status', status)
-                if (status === 'pending') {
-                  community.acceptConfirmationForObject(
-                    process.env.IDENTITY_SECRET,
-                    offer.id,
-                    async function (err) {
-                      if (err) {
-                        console.log('err', err)
-                      } else {
-                        io.emit('tradeOfferURL', {
-                          tradeOfferURL: `https://steamcommunity.com/tradeoffer/${offer.id}/`,
-                        })
-                        const { status } = await pollItemStatus(offer.id)
-                        if (status === 'ACCEPTED') {
-                          user.itemHeld = user.itemHeld.filter(
-                            (item) => item.classid !== itemID
-                          )
-                          await user.save()
-                          io.emit('tradeOfferStatus', {
-                            messageSuccess: 'Trade offer has been accepted',
-                          })
-                          resolve('ACCEPTED')
+          if (itemFound === false) {
+            if (item.classid === classID) {
+              itemFound = true
+              console.log(item)
+              offer.addMyItem(item)
+              console.log('add item')
+              offer.setMessage('We send you item')
+              offer.send((err, status) => {
+                if (err) {
+                  console.log(err)
+                  reject(new Error('Failed to send offer'))
+                } else {
+                  console.log('status', status)
+                  if (status === 'pending') {
+                    community.acceptConfirmationForObject(
+                      process.env.IDENTITY_SECRET,
+                      offer.id,
+                      async function (err) {
+                        if (err) {
+                          console.log('err', err)
                         } else {
-                          io.emit('tradeOfferStatus', {
-                            messageFailure: 'Trade offer has been declined',
+                          io.emit('tradeOfferURL', {
+                            tradeOfferURL: `https://steamcommunity.com/tradeoffer/${offer.id}/`,
                           })
-                          resolve('DENIED')
+                          const { status } = await pollItemStatus(offer.id)
+                          if (status === 'ACCEPTED') {
+                            user.itemHeld = user.itemHeld.filter(
+                              (item) => item.assetid !== assetID
+                            )
+                            await user.save()
+                            io.emit('tradeOfferStatus', {
+                              messageSuccess: 'Trade offer has been accepted',
+                            })
+                            resolve('ACCEPTED')
+                          } else {
+                            io.emit('tradeOfferStatus', {
+                              messageFailure: 'Trade offer has been declined',
+                            })
+                            resolve('DENIED')
+                          }
                         }
                       }
-                    }
-                  )
-                } else {
-                  console.log(`Offer #${offer.id} sent successfully`)
-                  resolve('Sent')
+                    )
+                  } else {
+                    console.log(`Offer #${offer.id} sent successfully`)
+                    resolve('Sent')
+                  }
                 }
-              }
-            })
+              })
+            }
           }
         })
+
         if (!itemFound) {
           reject(new Error('Item not found'))
         }
@@ -424,10 +435,11 @@ export async function getSteamItem(req, res) {
 
   const appID = req.body.appID
   const version = req.body.version
-  const itemID = req.body.classID
-
+  const classID = req.body.classID
+  const assetID = req.body.assetID
   if (user) {
     const offer = manager.createOffer(user.profile.steam.steamTradeURL)
+    console.log(user.profile.steam.steamTradeURL)
     // Load recipient's inventory
     manager.getUserInventoryContents(
       user.profile.steam.steamID,
@@ -442,7 +454,7 @@ export async function getSteamItem(req, res) {
           let itemFound = false
           // Add recipient's items to the offer
           inventory.forEach(function (item) {
-            if (item.classid === itemID) {
+            if (item.classid === classID) {
               itemFound = true
               const uuid = uuidv4()
               offer.addTheirItem(item)
@@ -482,6 +494,55 @@ export async function getSteamItem(req, res) {
     )
   } else {
     res.status(404).send({ message: 'User not found' })
+  }
+}
+export async function getInventory(req, res) {
+  try {
+    console.log('get item')
+    const user = await UserModel.findOne({ _id: req.body.userID })
+    if (!user) {
+      res.status(404).json({ message: 'User not found' })
+    }
+    const steamID = user.profile.steam.steamID
+
+    const lastReset = user.lastInventoryResetAt
+    const now = Date.now()
+    const timeDiff = now - lastReset
+    const minResetDuration = 5 * 60 * 1000
+
+    if (lastReset && timeDiff < minResetDuration) {
+      console.log('need to wait 5 min')
+      return res.status(400).json({
+        message: 'Cannot reset inventory again so soon before 5 minutes',
+      })
+    }
+    console.log('request')
+
+    const userInventory = await axios.get(
+      `https://steamcommunity.com/inventory/${steamID}/730/2?l=english`
+    )
+    const adminInventory = await axios.get(
+      'https://steamcommunity.com/inventory/76561199509269691/730/2?l=english'
+    )
+    user.lastInventoryResetAt = now
+    user.tradeItem = {
+      user: userInventory.data,
+      admin: adminInventory.data,
+    }
+    await user.save()
+    res.status(200).send({ message: 'Successfully' })
+  } catch (error) {
+    console.error('An error occurred: ', error.message)
+  }
+}
+export async function getAdminInventory(req, res) {
+  try {
+    const result = await axios.get(
+      'https://steamcommunity.com/inventory/76561198798991800/730/2?l=english'
+    )
+    res.send(result.data)
+  } catch (error) {
+    console.error('An error occurred: ', error.message)
   }
 }
 export const checkStatus = async (req, res) => {
@@ -546,4 +607,160 @@ export const pollItemStatus = async (offerID, maxPollAttempts) => {
     pollCount++
   }
   return { status, item }
+}
+export async function tradeCSGOItems(req, res) {
+  const user = await UserModel.findOne({ _id: req.body.userID })
+
+  const appID = req.body.appID
+  const version = req.body.version
+  const adminItems = req.body.adminItems
+  const userItems = req.body.userItems
+  const totalAdmin = req.body.totalAdmin
+  const totalUser = req.body.totalUser
+  if (user) {
+    const offer = manager.createOffer(user.profile.steam.steamTradeURL)
+    // Load recipient's inventory
+    const userItemPromises = []
+    const adminItemPromises = []
+    const priceDifference = Number(totalAdmin) - Number(totalUser)
+    if (priceDifference > 0) {
+      // Case 2: totalAdmin is greater than totalUser
+      // Check if user has enough money in the account
+      if (user.wallet >= priceDifference) {
+        console.log('deduct money')
+        // Deduct money from the user's account and proceed with the trade offer
+        user.wallet = Number(user.wallet) - Number(priceDifference)
+        // await user.save();
+        // Proceed with the trade offer creation and sending
+      } else {
+        // User does not have enough money, send an error response
+        return res
+          .status(400)
+          .send({ message: 'Insufficient funds in the user account' })
+      }
+    } else {
+      // Case 3: totalAdmin is less than totalUser
+      // Add money to the user's account
+      console.log('add money')
+      user.wallet = Number(user.wallet) + Number(Math.abs(priceDifference))
+      // await user.save();
+      // Proceed with the trade offer creation and sending
+    }
+
+    if (userItems.length > 0) {
+      // Iterate through user's inventory and add matching items to the offer
+      const addItemPromise = new Promise((resolve, reject) => {
+        manager.getUserInventoryContents(
+          user.profile.steam.steamID,
+          appID,
+          version,
+          true,
+          (err, inventory) => {
+            if (err) {
+              console.log('err', err)
+            } else {
+              const classidCounts = {}
+
+              userItems.forEach((user) => {
+                inventory.forEach((item) => {
+                  if (item.classid === user.classid) {
+                    const count = classidCounts[user.classid] || 0
+                    if (count < 1) {
+                      offer.addTheirItem(item)
+                      console.log('add user item')
+                      classidCounts[user.classid] = count + 1
+                    }
+                  }
+                })
+              })
+              resolve()
+            }
+          }
+        )
+      })
+      userItemPromises.push(addItemPromise)
+    }
+
+    if (adminItems.length > 0) {
+      // Load admin's inventory and add matching items to the offer
+      const loadInventoryPromise = new Promise((resolve, reject) => {
+        manager.loadInventory(appID, version, true, (err, inventory) => {
+          if (err) {
+            reject(err)
+          } else {
+            const classidCounts = {}
+            adminItems.forEach((admin) => {
+              inventory.forEach((item) => {
+                if (item.classid === admin.classid) {
+                  const count = classidCounts[admin.classid] || 0
+                  if (count < 1) {
+                    offer.addMyItem(item)
+                    console.log('add admin item')
+                    classidCounts[admin.classid] = count + 1
+                  }
+                }
+              })
+            })
+            resolve()
+          }
+        })
+      })
+      adminItemPromises.push(loadInventoryPromise)
+    }
+
+    // Wait for all item addition promises to resolve
+    Promise.all([...userItemPromises, ...adminItemPromises])
+      .then(() => {
+        // All items have been added, send the offer
+        offer.send((err, status) => {
+          if (err) {
+            console.log('err sent', err)
+          } else {
+            console.log('status', status)
+            if (status === 'pending') {
+              community.acceptConfirmationForObject(
+                process.env.IDENTITY_SECRET,
+                offer.id,
+                async function (err) {
+                  if (err) {
+                    console.log(err)
+                  } else {
+                    console.log('sent trade')
+                    io.emit('tradeOfferURL', {
+                      tradeOfferURL: `https://steamcommunity.com/tradeoffer/${offer.id}/`,
+                    })
+                    const { status } = await pollItemStatus(offer.id)
+                    if (status === 'ACCEPTED') {
+                      console.log('ACCEPTED')
+
+                      io.emit('tradeOfferStatus', {
+                        code: 0,
+                        message: 'Trade offer has been accepted',
+                      })
+                      await user.save()
+                      // resolve('ACCEPTED')
+                    } else {
+                      console.log('DENIED')
+                      io.emit('tradeOfferStatus', {
+                        code: 1,
+                        message: 'Trade offer has been declined',
+                      })
+                      // resolve('DENIED')
+                    }
+                  }
+                }
+              )
+            } else {
+              console.log(`Offer #${offer.id} sent successfully`)
+              // resolve('Sent')
+            }
+          }
+        })
+      })
+      .catch((error) => {
+        console.error('Error adding items to the offer:', error)
+      })
+  } else {
+    res.status(404).send({ message: 'User not found' })
+  }
 }

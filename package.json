@@ -37,10 +37,11 @@
     "steam-inventory-iterator": "^1.1.2",
     "steam-market-fetcher": "^2.0.2",
     "steam-market-pricing": "^2.0.0",
+    "steam-session": "^1.6.0",
     "steam-totp": "^2.1.2",
     "steam-tradeoffer-manager": "^2.10.5",
     "steam-tradeoffers": "^3.2.1",
-    "steam-user": "^4.28.4",
+    "steam-user": "^4.29.3",
     "steam-web": "^0.7.0",
     "steamcommunity": "^3.45.3",
     "uuid": "^9.0.0"

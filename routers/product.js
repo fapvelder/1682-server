@@ -1,5 +1,6 @@
 import {
   createProduct,
+  editProduct,
   findProduct,
   getMyProducts,
   getProductDetails,
@@ -12,9 +13,10 @@ import express from 'express'
 
 const router = express.Router()
 router.get('/', getProducts)
-router.post('/myProducts', isAuth, getMyProducts)
-router.post('/details', isAuth, getProductDetails)
-router.post('/user', isAuth, getUserProducts)
+router.post('/myProducts', getMyProducts)
+router.post('/details', getProductDetails)
+router.post('/user', getUserProducts)
 router.post('/create', isAuth, createProduct)
-router.get('/search/product', isAuth, findProduct)
+router.post('/edit', isAuth, editProduct)
+router.get('/search/product', findProduct)
 export default router

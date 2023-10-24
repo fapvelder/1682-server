@@ -141,14 +141,29 @@ io.on('connection', (socket) => {
     try {
       const { userID, type, url } = data
       let typeMessages = {
-        Purchase: 'Someone has purchased your product',
-        Comment: 'Someone has commented on your product',
-        Complete: 'Your product has been completed by the seller',
-        Cancel: 'Your product has been cancelled by the buyer',
-        Feedback: 'You have a feedback from the seller',
+        Purchase: {
+          en: 'Someone has purchased your product',
+          vi: 'Sản phẩm của bạn đã được bán',
+        },
+        Comment: {
+          en: 'Someone has commented on your product',
+          vi: 'Có một bình luận mới',
+        },
+        Complete: {
+          en: 'Your product has been completed by the seller',
+          vi: 'Sản phẩm của bạn được hoàn tất bởi người bán',
+        },
+        Cancel: {
+          en: 'Your product has been cancelled by the buyer',
+          vi: 'Sản phẩm của bạn bị hủy bỏ bởi người mua',
+        },
+        Feedback: {
+          en: 'You have a feedback from the buyer',
+          vi: 'Bạn có một đánh giá từ người mua',
+        },
       }
       const message = typeMessages[type]
-
+      console.log(message)
       const user = await UserModel.findOne({ _id: userID }).exec()
       if (user) {
         const newNotification = new NotificationModel({

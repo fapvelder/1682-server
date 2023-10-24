@@ -53,6 +53,7 @@ export const getUserById = async (req, res) => {
         wallet: user.wallet,
         transactions: user.transactions,
         itemHeld: user.itemHeld,
+        tradeItem: user.tradeItem,
       })
     } else {
       res.status(404).json({ message: 'User not found' })
