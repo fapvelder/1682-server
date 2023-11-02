@@ -20,10 +20,15 @@ import {
   updateSteamURLSchema,
 } from '../helpers/validation_schema.js'
 import { LoginSession, EAuthTokenPlatformType } from 'steam-session'
-
+import SteamAuth from 'node-steam-openid'
 const app = express()
 app.use(passport.initialize())
 app.use(passport.session())
+const steam = new SteamAuth({
+  realm: 'http://localhost:5000', // Site name displayed to users on logon
+  returnUrl: 'http://localhost:5000/steam/auth/steam/authenticate', // Your return route
+  apiKey: process.env.STEAM_API, // Steam API key
+})
 
 const client = new SteamUser()
 const community = new SteamCommunity()
@@ -66,13 +71,11 @@ export const loginSteam = async () => {
       console.log(err)
     })
   }, 35000)
-
   client.on('webSession', (sessionID, cookies) => {
     manager.setCookies(cookies)
     // community.setCookies(cookies)
   })
   community.on('debug', console.log)
-
   manager.on('newOffer', (offer) => {
     console.log('offer detected')
     if (offer.partner.getSteamID64 === '76561198255066121') {
@@ -96,6 +99,7 @@ export const loginSteam = async () => {
     }
   })
 }
+
 passport.use(
   new SteamStrategy(
     {
@@ -112,6 +116,7 @@ passport.use(
           process.env.JWT_REFRESH_SECRET,
           async (err, decoded) => {
             if (err) {
+              console.log('err 1 ', err)
               return done(err) // Pass the error to done function
             } else {
               const user = await UserModel.findOne({ _id: decoded._id })
@@ -125,6 +130,8 @@ passport.use(
                   // Handle additional operations or responses here
                   return done(null, profile) // Pass the user profile to done function
                 } catch (err) {
+                  console.log('err 2 ', err)
+
                   return done(err) // Pass the error to done function
                 }
               }
@@ -450,40 +457,42 @@ export async function getSteamItem(req, res) {
         if (err) {
           console.log('err', err)
         } else {
-          console.log('sending')
+          console.log('sendin')
           let itemFound = false
           // Add recipient's items to the offer
           inventory.forEach(function (item) {
-            if (item.classid === classID) {
-              itemFound = true
-              const uuid = uuidv4()
-              offer.addTheirItem(item)
-              offer.setMessage(`You traded an item ${uuid}`)
-              offer.send(async (err, status) => {
-                if (err) {
-                  console.log('err', err)
-                } else {
-                  console.log('status', status)
-                  if (status === 'pending') {
-                    console.log('pending')
+            if (itemFound === false) {
+              if (item.classid === classID) {
+                itemFound = true
+                const uuid = uuidv4()
+                offer.addTheirItem(item)
+                offer.setMessage(`You traded an item ${uuid}`)
+                offer.send(async (err, status) => {
+                  if (err) {
+                    console.log('err', err)
                   } else {
-                    const response = {
-                      id: uuid,
-                      tradeOfferUrl: `https://steamcommunity.com/tradeoffer/${offer.id}/`,
-                    }
-                    user.pendingOffer = [...user.pendingOffer, offer.id]
-                    await user.save()
-                    res.status(200).send(response)
+                    console.log('status', status)
+                    if (status === 'pending') {
+                      console.log('pending')
+                    } else {
+                      const response = {
+                        id: uuid,
+                        tradeOfferUrl: `https://steamcommunity.com/tradeoffer/${offer.id}/`,
+                      }
+                      user.pendingOffer = [...user.pendingOffer, offer.id]
+                      await user.save()
+                      res.status(200).send(response)
 
-                    // const status = await pollItemStatus(offer.id)
-                    // if (status === 'ACCEPTED') {
-                    //   console.log(status)
-                    // } else {
-                    //   console.log(status)
-                    // }
+                      // const status = await pollItemStatus(offer.id)
+                      // if (status === 'ACCEPTED') {
+                      //   console.log(status)
+                      // } else {
+                      //   console.log(status)
+                      // }
+                    }
                   }
-                }
-              })
+                })
+              }
             }
           })
           if (!itemFound) {
@@ -762,5 +771,41 @@ export async function tradeCSGOItems(req, res) {
       })
   } else {
     res.status(404).send({ message: 'User not found' })
+  }
+}
+export const redirect = async (req, res) => {
+  const redirectUrl = await steam.getRedirectUrl()
+  return res.redirect(redirectUrl)
+}
+export const authenticate = async (req, res) => {
+  try {
+    const userID = req.cookies.refresh
+    if (userID) {
+      jwt.verify(
+        userID,
+        process.env.JWT_REFRESH_SECRET,
+        async (err, decoded) => {
+          if (err) {
+            console.log('err 1 ', err)
+            return done(err) // Pass the error to done function
+          } else {
+            const profile = await steam.authenticate(req)
+            const user = await UserModel.findOne({ _id: decoded._id })
+            if (user) {
+              const id = convertor.to32(profile.steamid)
+
+              user.profile.steam.steamID = profile.steamid
+              user.profile.steam.steamURL = profile._json.profileurl
+              user.profile.steam.partnerID = id
+              await user.save()
+            }
+          }
+        }
+      )
+    }
+    res.redirect(`${process.env.FRONTEND_URL}/settings`)
+  } catch (error) {
+    console.log('err', error)
+    console.error(error)
   }
 }

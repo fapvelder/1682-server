@@ -16,7 +16,7 @@ const baseURL = {
 }
 
 export async function createOrder(req, res) {
-  await createOrderSchema.validateAsync(req.body)
+  // await createOrderSchema.validateAsync(req.body)
   const accessToken = await generatePaypalAccessToken()
   const url = `${baseURL.sandbox}/v2/checkout/orders`
   const response = await fetch(url, {
@@ -43,7 +43,7 @@ export async function createOrder(req, res) {
 
 // use the orders api to capture payment for an order
 export async function capturePayment(req, res) {
-  await capturePaymentSchema.validateAsync(req.body)
+  // await capturePaymentSchema.validateAsync(req.body)
   const { orderID } = req.body
 
   const accessToken = await generatePaypalAccessToken()
@@ -87,7 +87,7 @@ export async function capturePayment(req, res) {
   res.send(data)
 }
 export async function payout(req, res) {
-  await payoutSchema.validateAsync(req.body)
+  // await payoutSchema.validateAsync(req.body)
   const accessToken = await generatePaypalAccessToken()
   const user = await UserModel.findOne({ _id: req.body.userID })
   const date = new Date()
@@ -129,7 +129,10 @@ export async function payout(req, res) {
         )
         const payoutID = response.data.batch_header.payout_batch_id
         const status = await pollTransactionStatus(payoutID)
+        console.log(status)
+
         if (status === 'SUCCESS') {
+          console.log(status)
           user.wallet =
             Number(user.wallet) -
             Number(req.body.amount) -
@@ -137,6 +140,8 @@ export async function payout(req, res) {
           await user.save()
           res.status(200).send('Successfully')
         } else {
+          console.log(status)
+
           res.status(403).send({ message: 'Failed due to Denied by Paypal' })
         }
       } else {
@@ -162,13 +167,15 @@ export const checkPaypalTransaction = async (payoutID) => {
         },
       }
     )
+    console.log(accessToken)
+    console.log(`${baseURL.sandbox}/v1/payments/payouts/${payoutID}`)
     return payoutStatus.data.batch_header.batch_status
   } catch (err) {
     console.error(err)
   }
 }
 export async function pollTransactionStatus(payoutID) {
-  await pollTransactionStatusSchema.validateAsync({ payoutID })
+  // await pollTransactionStatusSchema.validateAsync({ payoutID })
   let status = ''
   while (status !== 'SUCCESS') {
     status = await checkPaypalTransaction(payoutID)
