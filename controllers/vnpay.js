@@ -57,8 +57,8 @@ export const createPaymentURL = async (req, res) => {
     let signed = hmac.update(new Buffer(signData, 'utf-8')).digest('hex')
     vnp_Params['vnp_SecureHash'] = signed
     vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false })
-    res.send(vnpUrl)
 
+    res.send(vnpUrl)
     const status = await pollVNPayStatus(
       vnp_TxnRef,
       vnp_TransactionDate,
@@ -111,21 +111,22 @@ export const pollVNPayStatus = async (
 ) => {
   let status = ''
   while (status !== '00') {
-    const result = await checkVNPayTransaction(
+    let result = await checkVNPayTransaction(
       vnp_TxnRef,
       vnp_TransactionDate,
       vnp_IpAddr
     )
+    console.log(result)
+
     const status = result.vnp_TransactionStatus
     if (status === '00') {
       console.log(status)
-
       return status
     } else if (status === '01' || status === undefined) {
+      console.log('here')
       console.log(status)
       await new Promise((resolve) => setTimeout(resolve, 3000))
     } else {
-      console.log(status)
       return status
     }
   }
@@ -149,6 +150,7 @@ export const VNPayReturn = (req, res) => {
   if (secureHash === signed) {
     //Kiem tra xem du lieu trong db co hop le hay khong va thong bao ket qua
     const status = vnp_Params['vnp_ResponseCode']
+    console.log(status)
     res.redirect(
       `${process.env.FRONTEND_URL}/wallet?vnp_TransactionStatus=${status}`
     )
