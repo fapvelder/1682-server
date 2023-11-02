@@ -457,7 +457,7 @@ export async function getSteamItem(req, res) {
         if (err) {
           console.log('err', err)
         } else {
-          console.log('sending')
+          console.log('sendin')
           let itemFound = false
           // Add recipient's items to the offer
           inventory.forEach(function (item) {
