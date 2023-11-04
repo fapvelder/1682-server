@@ -50,6 +50,7 @@ const allowOrigin = [
   'https://steamcommunity.com/',
   'https://steamcommunity.com/openid/login',
   'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+  'https://gamebay.store/',
   '*',
 ]
 
