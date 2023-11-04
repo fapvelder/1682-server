@@ -121,6 +121,7 @@ export const loginGoogleUsers = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
     })
+    console.log(refreshToken)
     return res.status(200).json({
       _id: user._id,
       token: accessToken,
