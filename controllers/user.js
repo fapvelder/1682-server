@@ -95,13 +95,13 @@ export const refresh = async (req, res) => {
         return res.status(406).json({ message: 'Unauthorized' })
       } else {
         const accessToken = generateAccessToken(decoded)
-        console.log(accessToken)
         res.cookie('refresh', refreshToken, {
           httpOnly: true,
           secure: true,
           maxAge: 24 * 60 * 60 * 1000,
           path: '/',
           domain: process.env.FRONTEND_URL,
+          sameSite: 'None',
         })
         return res.json({ _id: decoded._id, token: accessToken })
       }
@@ -122,7 +122,10 @@ export const loginGoogleUsers = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
       domain: process.env.FRONTEND_URL,
+      sameSite: 'None',
     })
+    console.log('refreshToken')
+    console.log(process.env.FRONTEND_URL)
     console.log(refreshToken)
     return res.status(200).json({
       _id: user._id,
@@ -174,6 +177,7 @@ export const registerGoogleUsers = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
       domain: process.env.FRONTEND_URL,
+      sameSite: 'None',
     })
     res.send({
       _id: user._id,
@@ -196,7 +200,7 @@ export const loginUser = async (req, res) => {
         maxAge: 24 * 60 * 60 * 1000,
         path: '/',
         domain: process.env.FRONTEND_URL,
-        sameSite: false,
+        sameSite: 'None',
       })
       return res.status(200).json({
         _id: user._id,
@@ -245,8 +249,8 @@ export const registerUser = async (req, res, next) => {
       httpOnly: true,
       secure: false,
       maxAge: 24 * 60 * 60 * 1000,
-      domain: process.env.FRONTEND_URL,
       path: '/',
+      domain: process.env.FRONTEND_URL,
     })
     res.send({
       _id: user._id,
