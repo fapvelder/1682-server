@@ -110,6 +110,7 @@ passport.use(
     },
     (req, identifier, profile, done) => {
       const userID = req.cookies.refresh
+      console.log(req.cookies.refresh)
       if (userID) {
         jwt.verify(
           userID,
@@ -148,7 +149,7 @@ passport.use(
 export const handleAuthError = (req, res, next) => {
   passport.authenticate('steam', { failureRedirect: '/login' }),
     function (req, res) {
-      res.redirect('localhost:3000/settings?err')
+      res.redirect(`${process.env.FRONTEND_URL}/settings?err`)
     }
 }
 export const deleteSteamID = async (req, res) => {
@@ -176,7 +177,9 @@ passport.deserializeUser((id, done) => {
   const user = { id: id, username: 'exampleUser' } // Replace with your implementation
   done(null, user)
 })
-
+export const userLoginSteam = (req, res) => {
+  passport.authenticate('steam')
+}
 export const authSteam = passport.authenticate('steam')
 export const getParams = (req, res, next) => {
   const userid = req.params
