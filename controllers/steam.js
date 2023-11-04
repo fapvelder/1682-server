@@ -110,6 +110,7 @@ passport.use(
     },
     (req, identifier, profile, done) => {
       const userID = req.cookies.refresh
+      console.log('req.cookies.refresh')
       console.log(req.cookies.refresh)
       if (userID) {
         jwt.verify(
