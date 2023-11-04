@@ -101,6 +101,7 @@ export const refresh = async (req, res) => {
           secure: true,
           maxAge: 24 * 60 * 60 * 1000,
           path: '/',
+          domain: process.env.FRONTEND_URL,
         })
         return res.json({ _id: decoded._id, token: accessToken })
       }
@@ -120,6 +121,7 @@ export const loginGoogleUsers = async (req, res) => {
       secure: false,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
+      domain: process.env.FRONTEND_URL,
     })
     console.log(refreshToken)
     return res.status(200).json({
@@ -171,6 +173,7 @@ export const registerGoogleUsers = async (req, res) => {
       secure: false,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
+      domain: process.env.FRONTEND_URL,
     })
     res.send({
       _id: user._id,
@@ -192,6 +195,7 @@ export const loginUser = async (req, res) => {
         secure: true,
         maxAge: 24 * 60 * 60 * 1000,
         path: '/',
+        domain: process.env.FRONTEND_URL,
         sameSite: false,
       })
       return res.status(200).json({
@@ -241,6 +245,7 @@ export const registerUser = async (req, res, next) => {
       httpOnly: true,
       secure: false,
       maxAge: 24 * 60 * 60 * 1000,
+      domain: process.env.FRONTEND_URL,
       path: '/',
     })
     res.send({
