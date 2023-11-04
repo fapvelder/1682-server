@@ -53,6 +53,7 @@ const allowOrigin = [
   'https://gamebay.store/',
   '*',
 ]
+console.log(process.env.STEAM_API)
 console.log(process.env.FRONTEND_URL)
 const corsOptions = {
   credentials: true,
