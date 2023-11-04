@@ -45,12 +45,12 @@ const allowOrigin = [
   process.env.BACKEND_URL,
   'http://localhost:5000',
   'http://localhost:3000',
-  'https://one682-client.onrender.com',
+  // 'https://one682-client.onrender.com',
   'https://one682.onrender.com',
   'https://steamcommunity.com/',
   'https://steamcommunity.com/openid/login',
   'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
-  'https://gamebay.store/',
+  // 'https://gamebay.store/',
   '*',
 ]
 
