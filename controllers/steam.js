@@ -110,9 +110,7 @@ passport.use(
     },
     (req, identifier, profile, done) => {
       const userID = req.cookies.refresh
-      console.log('req.cookies.refresh')
-      console.log(req.cookies.refresh)
-      console.log(req.cookies)
+
       if (userID) {
         jwt.verify(
           userID,
@@ -182,7 +180,9 @@ passport.deserializeUser((id, done) => {
 export const userLoginSteam = (req, res) => {
   passport.authenticate('steam')
 }
+
 export const authSteam = passport.authenticate('steam')
+
 export const getParams = (req, res, next) => {
   const userid = req.params
   if (!userid) {

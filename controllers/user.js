@@ -118,7 +118,7 @@ export const loginGoogleUsers = async (req, res) => {
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
       httpOnly: false,
-      secure: true,
+      secure: false,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
       domain: 'gamebay.store',
@@ -173,7 +173,7 @@ export const registerGoogleUsers = async (req, res) => {
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
       httpOnly: false,
-      secure: true,
+      secure: false,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
       domain: 'gamebay.store',
@@ -196,7 +196,7 @@ export const loginUser = async (req, res) => {
       const refreshToken = generateRefreshToken(user)
       res.cookie('refresh', refreshToken, {
         httpOnly: false,
-        secure: true,
+        secure: false,
         maxAge: 24 * 60 * 60 * 1000,
         path: '/',
         domain: 'gamebay.store',
@@ -247,7 +247,7 @@ export const registerUser = async (req, res, next) => {
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
       httpOnly: false,
-      secure: true,
+      secure: false,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
       domain: 'gamebay.store',
