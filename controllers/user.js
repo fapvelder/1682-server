@@ -96,7 +96,7 @@ export const refresh = async (req, res) => {
       } else {
         const accessToken = generateAccessToken(decoded)
         res.cookie('refresh', refreshToken, {
-          httpOnly: true,
+          httpOnly: false,
           secure: true,
           maxAge: 24 * 60 * 60 * 1000,
           path: '/',
@@ -117,7 +117,7 @@ export const loginGoogleUsers = async (req, res) => {
     const accessToken = generateAccessToken(user)
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
-      httpOnly: true,
+      httpOnly: false,
       secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
