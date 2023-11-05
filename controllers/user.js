@@ -118,7 +118,7 @@ export const loginGoogleUsers = async (req, res) => {
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
       domain: process.env.FRONTEND_URL,
@@ -173,7 +173,7 @@ export const registerGoogleUsers = async (req, res) => {
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
       domain: process.env.FRONTEND_URL,
@@ -247,7 +247,7 @@ export const registerUser = async (req, res, next) => {
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
       httpOnly: true,
-      secure: false,
+      secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
       domain: process.env.FRONTEND_URL,
