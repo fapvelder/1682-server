@@ -117,7 +117,11 @@ export const loginGoogleUsers = async (req, res) => {
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
       httpOnly: true,
+      secure: true,
       maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
+      domain: 'https://gamebay.store/',
+      sameSite: 'none',
     })
     console.log('refreshToken')
     console.log(process.env.FRONTEND_URL)
