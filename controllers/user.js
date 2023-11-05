@@ -100,7 +100,7 @@ export const refresh = async (req, res) => {
           secure: true,
           maxAge: 24 * 60 * 60 * 1000,
           path: '/',
-          domain: process.env.FRONTEND_URL,
+          domain: 'gamebay.store',
           sameSite: 'None',
         })
         return res.json({ _id: decoded._id, token: accessToken })
@@ -121,7 +121,7 @@ export const loginGoogleUsers = async (req, res) => {
       secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
-      domain: process.env.FRONTEND_URL,
+      domain: 'gamebay.store',
       sameSite: 'None',
     })
     console.log('refreshToken')
@@ -176,7 +176,7 @@ export const registerGoogleUsers = async (req, res) => {
       secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
-      domain: process.env.FRONTEND_URL,
+      domain: 'gamebay.store',
       sameSite: 'None',
     })
     res.send({
@@ -199,7 +199,7 @@ export const loginUser = async (req, res) => {
         secure: true,
         maxAge: 24 * 60 * 60 * 1000,
         path: '/',
-        domain: process.env.FRONTEND_URL,
+        domain: 'gamebay.store',
         sameSite: 'None',
       })
       return res.status(200).json({
@@ -250,7 +250,7 @@ export const registerUser = async (req, res, next) => {
       secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
-      domain: process.env.FRONTEND_URL,
+      domain: 'gamebay.store',
     })
     res.send({
       _id: user._id,
