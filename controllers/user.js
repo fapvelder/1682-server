@@ -96,12 +96,11 @@ export const refresh = async (req, res) => {
       } else {
         const accessToken = generateAccessToken(decoded)
         res.cookie('refresh', refreshToken, {
-          httpOnly: false,
+          httpOnly: true,
           secure: true,
           maxAge: 24 * 60 * 60 * 1000,
           path: '/',
-          domain: 'gamebay.store',
-          sameSite: 'None',
+          domain: 'https://gamebay.store/',
         })
         return res.json({ _id: decoded._id, token: accessToken })
       }
@@ -117,12 +116,11 @@ export const loginGoogleUsers = async (req, res) => {
     const accessToken = generateAccessToken(user)
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
-      httpOnly: false,
-      secure: false,
+      httpOnly: true,
+      secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
-      domain: 'gamebay.store',
-      sameSite: 'None',
+      domain: 'https://gamebay.store/',
     })
     console.log('refreshToken')
     console.log(process.env.FRONTEND_URL)
@@ -172,12 +170,11 @@ export const registerGoogleUsers = async (req, res) => {
     })
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
-      httpOnly: false,
-      secure: false,
+      httpOnly: true,
+      secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
-      domain: 'gamebay.store',
-      sameSite: 'None',
+      domain: 'https://gamebay.store/',
     })
     res.send({
       _id: user._id,
@@ -195,12 +192,11 @@ export const loginUser = async (req, res) => {
       const accessToken = generateAccessToken(user)
       const refreshToken = generateRefreshToken(user)
       res.cookie('refresh', refreshToken, {
-        httpOnly: false,
-        secure: false,
+        httpOnly: true,
+        secure: true,
         maxAge: 24 * 60 * 60 * 1000,
         path: '/',
-        domain: 'gamebay.store',
-        sameSite: 'None',
+        domain: 'https://gamebay.store/',
       })
       return res.status(200).json({
         _id: user._id,
@@ -246,11 +242,11 @@ export const registerUser = async (req, res, next) => {
     })
     const refreshToken = generateRefreshToken(user)
     res.cookie('refresh', refreshToken, {
-      httpOnly: false,
-      secure: false,
+      httpOnly: true,
+      secure: true,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
-      domain: 'gamebay.store',
+      domain: 'https://gamebay.store/',
     })
     res.send({
       _id: user._id,
