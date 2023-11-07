@@ -25,8 +25,8 @@ const app = express()
 app.use(passport.initialize())
 app.use(passport.session())
 const steam = new SteamAuth({
-  realm: 'http://localhost:5000', // Site name displayed to users on logon
-  returnUrl: 'http://localhost:5000/steam/auth/steam/authenticate', // Your return route
+  realm: process.env.BACKEND_URL, // Site name displayed to users on logon
+  returnUrl: `${process.env.BACKEND_URL}/steam/auth/steam/authenticate`, // Your return route
   apiKey: process.env.STEAM_API, // Steam API key
 })
 
