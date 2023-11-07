@@ -181,8 +181,10 @@ export const userLoginSteam = (req, res) => {
   passport.authenticate('steam')
 }
 
-export const authSteam = passport.authenticate('steam')
-
+// export const authSteam = passport.authenticate('steam')
+export const authSteam = (req, res) => {
+  passport.authenticate('steam')
+}
 export const getParams = (req, res, next) => {
   const userid = req.params
   if (!userid) {
@@ -778,39 +780,59 @@ export async function tradeCSGOItems(req, res) {
     res.status(404).send({ message: 'User not found' })
   }
 }
+let userID
 export const redirect = async (req, res) => {
+  console.log('redirect')
   const redirectUrl = await steam.getRedirectUrl()
+  userID = req.query.userID
   return res.redirect(redirectUrl)
 }
 export const authenticate = async (req, res) => {
   try {
-    const userID = req.cookies.refresh
-    if (userID) {
-      jwt.verify(
-        userID,
-        process.env.JWT_REFRESH_SECRET,
-        async (err, decoded) => {
-          if (err) {
-            console.log('err 1 ', err)
-            return done(err) // Pass the error to done function
-          } else {
-            const profile = await steam.authenticate(req)
-            const user = await UserModel.findOne({ _id: decoded._id })
-            if (user) {
-              const id = convertor.to32(profile.steamid)
-
-              user.profile.steam.steamID = profile.steamid
-              user.profile.steam.steamURL = profile._json.profileurl
-              user.profile.steam.partnerID = id
-              await user.save()
-            }
-          }
-        }
-      )
+    const profile = await steam.authenticate(req)
+    console.log(userID)
+    if (userID && profile) {
+      const user = await UserModel.findOne({ _id: userID })
+      if (user) {
+        const id = convertor.to32(profile.steamid)
+        user.profile.steam.steamID = profile.steamid
+        user.profile.steam.steamURL = profile._json.profileurl
+        user.profile.steam.partnerID = id
+        await user.save()
+        // Handle additional operations or responses here
+        res.redirect(`${process.env.FRONTEND_URL}/settings`)
+      }
     }
-    res.redirect(`${process.env.FRONTEND_URL}/settings`)
   } catch (error) {
-    console.log('err', error)
     console.error(error)
   }
+
+  // try {
+  // const userID = req.cookies.refresh
+  // if (userID) {
+  //   jwt.verify(
+  //     userID,
+  //     process.env.JWT_REFRESH_SECRET,
+  //     async (err, decoded) => {
+  //       if (err) {
+  //         console.log('err 1 ', err)
+  //         return done(err) // Pass the error to done function
+  //       } else {
+  //           const user = await UserModel.findOne({ _id: decoded._id })
+  //           if (user) {
+  //             const id = convertor.to32(profile.steamid)
+
+  //             user.profile.steam.steamID = profile.steamid
+  //             user.profile.steam.steamURL = profile._json.profileurl
+  //             user.profile.steam.partnerID = id
+  //             await user.save()
+  //           }
+  //         }
+  //       }
+  //     )
+  //   }
+  // } catch (error) {
+  //   console.log('err', error)
+  //   console.error(error)
+  // }
 }
