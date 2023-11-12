@@ -6,7 +6,8 @@ import {
   createProductSchema,
   findProductSchema,
 } from '../helpers/validation_schema.js'
-
+import mongoose from 'mongoose'
+import { isDuplicateItem, levenshteinDistance } from '../utils.js'
 export const getProducts = async (req, res) => {
   try {
     const products = await ProductModel.find({}).sort({ createdAt: -1 })
@@ -27,6 +28,144 @@ export const getMyProducts = async (req, res) => {
     res.status(500).send({ message: err.message })
   }
 }
+export const getUserChartInformation = async (req, res) => {
+  try {
+    const currentDate = new Date()
+    const previousThreeMonthsStartDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - 3,
+      1
+    )
+    const filter = {
+      listingBy: new mongoose.Types.ObjectId(req.body.userID),
+      status: 'Completed',
+      updatedAt: {
+        $gte: previousThreeMonthsStartDate,
+        $lt: currentDate,
+      },
+    }
+    const products = await ProductModel.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$updatedAt' },
+            month: { $month: '$updatedAt' },
+            day: { $dayOfMonth: '$updatedAt' },
+          },
+          totalPrice: { $sum: { $multiply: ['$price', 0.9] } },
+          itemCount: { $sum: 1 },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
+    ])
+
+    res.status(200).send(products)
+  } catch (err) {
+    res.status(500).send({ message: err.message })
+  }
+}
+export const getAdminChartInformation = async (req, res) => {
+  try {
+    const currentDate = new Date()
+    const previousThreeMonthsStartDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - 3,
+      1
+    )
+    const filter = {
+      status: 'Completed',
+      updatedAt: {
+        $gte: previousThreeMonthsStartDate,
+        $lt: currentDate,
+      },
+    }
+    const products = await ProductModel.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$updatedAt' },
+            month: { $month: '$updatedAt' },
+            day: { $dayOfMonth: '$updatedAt' },
+          },
+          totalPrice: { $sum: { $multiply: ['$price', 0.1] } },
+          itemCount: { $sum: 1 },
+          uniquePhotos: { $addToSet: '$photos' },
+        },
+      },
+
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
+    ])
+    res.status(200).send(products)
+  } catch (err) {
+    res.status(500).send({ message: err.message })
+  }
+}
+export const getAdminChartProducts = async (req, res) => {
+  try {
+    const currentDate = new Date()
+    const previousThreeMonthsStartDate = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - 3,
+      1
+    )
+    const filter = {
+      updatedAt: {
+        $gte: previousThreeMonthsStartDate,
+        $lt: currentDate,
+      },
+    }
+    const products = await ProductModel.aggregate([
+      { $match: filter },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'listingBy',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          photos: 1,
+          price: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          'user.username': 1,
+          'user.email': 1,
+          'user.displayName': 1,
+          'user.fullName': 1,
+        },
+      },
+
+      // {
+      //   $group: {
+      //     _id: {
+      //       year: { $year: '$updatedAt' },
+      //       month: { $month: '$updatedAt' },
+      //       day: { $dayOfMonth: '$updatedAt' },
+      //     },
+      //     totalPrice: { $sum: { $multiply: ['$price', 0.1] } },
+      //     itemCount: { $sum: 1 },
+      //     uniquePhotos: { $addToSet: '$photos' },
+      //   },
+      // },
+
+      // { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
+    ])
+    res.status(200).send(products)
+  } catch (err) {
+    res.status(500).send({ message: err.message })
+  }
+}
+
 export const getProductDetails = async (req, res) => {
   try {
     const product = await ProductModel.findOne({ _id: req.body._id })
@@ -57,17 +196,18 @@ export const getUserProducts = async (req, res) => {
 }
 export const createProduct = async (req, res) => {
   try {
-    await createProductSchema.validateAsync(req.body)
+    // await createProductSchema.validateAsync(req.body)
     const body = req.body
     const category = await CategoryModel.findOne({ name: body.category }).exec()
     const subCategory = category.subCategory.find(
       (sub) => sub.title === body.gameTitle || sub.title === body.subCategory
     )
     let allPhotos = []
+    console.log('here')
 
     if (body.url.length > 0) {
       let photoUrl
-      if (typeof body.url === 'string' && body.url.startsWith('https://')) {
+      if (typeof body.url === 'array' && body.url.startsWith('https://')) {
         photoUrl = body.url
       } else {
         if (body.url.length > 5) {
@@ -128,7 +268,20 @@ export const findProduct = async (req, res) => {
 
     if (search) {
       const regex = new RegExp(search, 'i')
-      filter.title = { $regex: regex }
+      const products = await ProductModel.find({ title: { $regex: regex } })
+      const allProducts = await ProductModel.find({})
+      const productTitle = products.map((product) => product.title)
+      const filteredProducts = allProducts
+        .filter((product) => {
+          const distance = levenshteinDistance(search, product.title)
+          if (distance <= 5) {
+            return true
+          }
+        })
+        .map((product) => product.title)
+      const combineTitle = [...productTitle, ...filteredProducts]
+
+      filter.title = { $in: combineTitle }
     }
 
     if (category) {

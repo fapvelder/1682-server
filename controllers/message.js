@@ -54,11 +54,11 @@ export const getLastMessage = async (req, res) => {
     if (!lastMessage) {
       return res.status(200).send(null) // Return null if there are no messages
     }
-
     const formattedMessage = {
       id: lastMessage._id,
       myself: lastMessage.sender.toString() === from,
       message: lastMessage.message,
+      updatedAt: lastMessage.updatedAt,
     }
 
     return res.status(200).send(formattedMessage)

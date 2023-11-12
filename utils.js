@@ -170,3 +170,6 @@ export const createSlug = (fullName) => {
 
   return slug
 }
+export const isDuplicateItem = (item1, item2) => {
+  return item1._id === item2._id || item1.attachment === item2.attachment
+}
