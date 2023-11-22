@@ -19,13 +19,9 @@ export async function createOrder(req, res) {
   // await createOrderSchema.validateAsync(req.body)
   const accessToken = await generatePaypalAccessToken()
   const url = `${baseURL.sandbox}/v2/checkout/orders`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
+  const response = await axios.post(
+    url,
+    {
       intent: 'CAPTURE',
       purchase_units: [
         {
@@ -35,10 +31,15 @@ export async function createOrder(req, res) {
           },
         },
       ],
-    }),
-  })
-  const data = await response.json()
-  res.send(data)
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  )
+  res.send(response.data)
 }
 
 // use the orders api to capture payment for an order
@@ -48,15 +49,14 @@ export async function capturePayment(req, res) {
 
   const accessToken = await generatePaypalAccessToken()
   const url = `${baseURL.sandbox}/v2/checkout/orders/${orderID}/capture`
-  const response = await fetch(url, {
-    method: 'POST',
+  const response = await axios.post(url, null, {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
   })
 
-  const data = await response.json()
+  const data = response.data
   const amount = data.purchase_units[0].payments.captures[0].amount.value
   if (data.status === 'COMPLETED') {
     const newTransaction = {
@@ -192,14 +192,11 @@ export async function pollTransactionStatus(payoutID) {
 // generate an access token using client id and app secret
 export async function generatePaypalAccessToken() {
   const auth = Buffer.from(CLIENT_ID + ':' + APP_SECRET).toString('base64')
-  const response = await fetch(`${baseURL.sandbox}/v1/oauth2/token`, {
-    method: 'POST',
-    body: 'grant_type=client_credentials',
+  const url = `${baseURL.sandbox}/v1/oauth2/token`
+  const response = await axios.post(url, 'grant_type=client_credentials', {
     headers: {
       Authorization: `Basic ${auth}`,
     },
   })
-  const data = await response.json()
-
-  return data.access_token
+  return response.data.access_token
 }

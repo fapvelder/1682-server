@@ -529,7 +529,7 @@ export const sendSecret = async (req, res) => {
       html: `
       <p>You are receiving this email because you (or someone else) has requested the code of payout.</p>
       <p>Please do not provide this code for someone else:</p>
-      <p>${secret}</p>
+      <strong><p>${secret}</p></strong>
       <p>If you did not request this, please ignore this email.</p>
     `,
     }
